@@ -1,0 +1,4 @@
+le chat mange la souris
+le chat dort
+la souris mange le fromage
+le chat mange le fromage
