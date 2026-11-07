@@ -1,0 +1,10 @@
+stage,count
+raw sentences,730079
+rejected by cleaning filters,5212
+duplicates removed (token level),8597
+kept after cleaning and dedup,716270
+train,644643
+valid,35813
+test,35814
+train tokens,4956646
+train distinct tokens,78166

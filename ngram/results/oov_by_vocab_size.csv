@@ -1,0 +1,4 @@
+vocab_size_requested,vocab_size_actual,valid_tokens,valid_oov_tokens,oov_rate_pct,sentences_with_oov_pct
+10000,10000,276255,15010,5.433,31.41
+20000,20000,276255,8071,2.922,18.37
+50000,50000,276255,2841,1.028,6.96
