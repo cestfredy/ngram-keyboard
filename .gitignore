@@ -1,8 +1,8 @@
 # Data: never commit raw or processed corpora (size + licenses)
-data/raw/*
-data/processed/*
-!data/raw/.gitkeep
-!data/processed/.gitkeep
+**/data/raw/*
+**/data/processed/*
+!**/data/raw/.gitkeep
+!**/data/processed/.gitkeep
 
 # Trained models (publish a small final model as a release instead)
 models/
