@@ -1,0 +1,16 @@
+# Single source of truth for the experiments (see JOURNAL.md for the reasoning).
+
+[project]
+seed = 42            # shuffling and splits must be reproducible
+
+[split]
+train = 0.90
+valid = 0.05         # used to tune n, smoothing and vocabulary size
+test = 0.05          # touched ONCE, for the final evaluation
+
+[vocab]
+sizes_to_try = [10000, 20000, 50000]
+unk_token = "<unk>"
+
+[model]
+kneser_ney_discount = 0.75
