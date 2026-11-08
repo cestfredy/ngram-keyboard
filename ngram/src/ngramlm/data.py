@@ -45,6 +45,14 @@ def split(
     )
 
 
+UNK = "<unk>"
+
+
+def map_to_vocab(sentences: Iterable[Sentence], vocab: set[str], unk: str = UNK) -> list[list[str]]:
+    """Replace every token outside the vocabulary by `<unk>`."""
+    return [[t if t in vocab else unk for t in s] for s in sentences]
+
+
 def count_tokens(sentences: Iterable[Sentence]) -> Counter[str]:
     counts: Counter[str] = Counter()
     for s in sentences:
