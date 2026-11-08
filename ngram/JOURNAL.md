@@ -22,7 +22,9 @@ One entry per decision, with the number that justified it.
 
 | Model | Vocab | Smoothing | Perplexity (valid) | Top-1 | Top-3 | Keystroke savings | Size | Latency |
 |-------|-------|-----------|--------------------|-------|-------|-------------------|------|---------|
-|       |       |           |                    |       |       |                   |      |         |
+| Unigram baseline (always `de je est`) | 20,000 | none | n/a | 3.11 % | 7.55 % | n/a | ~0 | ~0 |
+
+Next-word prediction with no letter typed, on the validation split (276,255 positions, `</s>` not evaluated, an out-of-vocabulary target counts as a miss). The baseline suggests the same three words everywhere, so its overall top-1 and top-3 are identical for 10k, 20k and 50k (`results/baseline_unigram.csv`); only the accuracy restricted to known words moves (top-3: 7.98 % at 10k, 7.77 % at 20k, 7.63 % at 50k). Any n-gram model has to beat **7.55 % top-3** to justify itself.
 
 ## Data observations
 

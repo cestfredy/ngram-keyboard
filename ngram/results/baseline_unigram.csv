@@ -1,0 +1,4 @@
+vocab_size,valid_positions,valid_in_vocab_positions,top1_pct,top3_pct,top1_in_vocab_pct,top3_in_vocab_pct,suggestions
+10000,276255,261245,3.11,7.55,3.29,7.98,de je est
+20000,276255,268184,3.11,7.55,3.20,7.77,de je est
+50000,276255,273414,3.11,7.55,3.14,7.63,de je est
