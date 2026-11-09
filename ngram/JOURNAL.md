@@ -104,3 +104,24 @@ Perplexities are **not comparable** across vocabulary sizes: a smaller vocabular
 ### Full validation run, order 4 (`results/ngram_kn_valid_full.csv`)
 
 All 276,255 positions, vocabulary 20,000, d=0.75, machine otherwise idle: top-1 **25.52 %**, top-3 **40.80 %**, perplexity 42.2, fit 16.4 s, **5.0 ms** per prediction (pure Python, 4.9 M n-gram entries). The 5,000-sentence sample estimate (40.88 %) was within 0.08 point. Not yet pruned or exported: size on disk is still to measure.
+
+### Count-threshold pruning, order 4, vocabulary 20,000, d=0.75 (`results/ngram_kn_pruning.csv`)
+
+`min counts` = minimum count kept for orders 2, 3, 4 (counts as used by Kneser-Ney: continuation counts below the top order, raw at the top). Top-k on the same 5,000-sentence validation sample, perplexity on the full validation split. "Est. MB" is a naive raw size (4 bytes per word id + 4 per count, no compression, no index): a ruler, not the final file size.
+
+| min counts | Entries | Est. MB | Top-1 | Top-3 | Perplexity | Latency |
+|-----------:|--------:|--------:|------:|------:|-----------:|--------:|
+| 1,1,1 (none) | 4,900,470 | 86.5 | 25.71 % | 40.88 % | 42.2 | 6.3 ms |
+| 1,1,2 | 2,782,181 | 44.1 | 24.69 % | 39.95 % | 47.9 | 5.9 ms |
+| 1,2,2 | 1,413,574 | 22.2 | 24.00 % | 38.86 % | 57.3 | 5.5 ms |
+| 2,2,2 | 1,054,301 | 17.9 | 23.98 % | 38.79 % | 62.9 | 3.6 ms |
+| 1,2,3 | 1,140,086 | 16.8 | 23.41 % | 38.14 % | 63.1 | 5.4 ms |
+| 2,3,3 | 606,195 | 9.7 | 22.91 % | 37.41 % | 78.8 | 3.3 ms |
+| 3,3,3 | 523,753 | 8.7 | 22.86 % | 37.25 % | 88.2 | 2.5 ms |
+| 2,3,4 | 519,615 | 7.9 | 22.41 % | 36.80 % | 85.0 | 3.2 ms |
+
+Reading:
+- Removing 78 % of the entries (2,2,2) costs 2.1 points of top-3 (40.88 to 38.79). Removing 89 % (2,3,4) costs 4.1 points.
+- Pruning bigrams seen once is almost free for top-3: 1,2,2 and 2,2,2 are equal within noise (38.86 vs 38.79) while 2,2,2 is 25 % smaller.
+- Perplexity degrades much faster than top-3 (42 to 63 at 2,2,2): rare n-grams carry probability mass that the model must spread elsewhere, and perplexity is sensitive to that, while the ranking of the top 3 words barely moves. For a keyboard top-k is the metric that matters, but it is a known weakness of plain count cutoffs; a smarter criterion (entropy-based pruning) could do better at equal size.
+- Latency improves up to about 2x because fewer candidates are scored (timings are noisy: two runs shared the machine).
