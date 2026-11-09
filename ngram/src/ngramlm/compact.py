@@ -17,6 +17,8 @@ a history or an n-gram is a binary search. Probabilities and suggestions are ide
 from __future__ import annotations
 
 import bisect
+import json
+import struct
 from pathlib import Path
 from typing import Sequence
 
@@ -47,6 +49,47 @@ def export(model: NgramModel, path: str | Path, compressed: bool = False) -> Non
         arrays[f"ids_{k}"] = np.array(grams, dtype=np.uint16).reshape(len(grams), k)
         arrays[f"counts_{k}"] = np.array([model.num[k][g] for g in grams], dtype=np.uint32)
     (np.savez_compressed if compressed else np.savez)(path, **arrays)
+
+
+def export_web(model: NgramModel, path: str | Path) -> None:
+    """Write ``model`` in the flat binary format read by ``keyboard/model.js`` (no zip, no numpy).
+
+    Layout, all little-endian:
+      "NGM1" | uint32 header_length | header (UTF-8 JSON, space-padded so data starts on 4 bytes)
+      uint32[V]                 unigram counts, indexed by token id
+      for each level k = 2..order, in header["levels"]:
+          uint16[n * k]         n-gram ids, row-major, rows sorted lexicographically
+          (2 bytes of padding when n * k is odd)
+          uint32[n]             count of each n-gram
+    Header: version, order, discount, bos, eos, unk (-1 if none), tokens (id -> string),
+    levels ([{k, n}, ...]).
+    """
+    if len(model.tokens) >= _MAX_TOKENS:
+        raise ValueError(f"at most {_MAX_TOKENS - 1} tokens can be exported")
+    levels, blobs = [], []
+    uni = np.zeros(len(model.tokens), dtype="<u4")
+    for (w,), c in model.num[1].items():
+        uni[w] = c
+    blobs.append(uni.tobytes())
+    for k in range(2, model.order + 1):
+        grams = sorted(model.num[k])
+        ids = np.array(grams, dtype="<u2").reshape(len(grams), k)
+        counts = np.array([model.num[k][g] for g in grams], dtype="<u4")
+        raw = ids.tobytes()
+        raw += b"\x00" * (-len(raw) % 4)
+        blobs += [raw, counts.tobytes()]
+        levels.append({"k": k, "n": len(grams)})
+    header = {
+        "version": 1, "order": model.order, "discount": model.discount, "bos": model._bos,
+        "eos": model.ids["</s>"], "unk": model.ids.get("<unk>", -1),
+        "tokens": model.tokens, "levels": levels,
+    }
+    hb = json.dumps(header, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    hb += b" " * (-(8 + len(hb)) % 4)
+    with open(path, "wb") as f:
+        f.write(b"NGM1" + struct.pack("<I", len(hb)) + hb)
+        for b in blobs:
+            f.write(b)
 
 
 def _pack(ids: np.ndarray) -> np.ndarray:
