@@ -16,6 +16,7 @@ a history or an n-gram is a binary search. Probabilities and suggestions are ide
 
 from __future__ import annotations
 
+import bisect
 from pathlib import Path
 from typing import Sequence
 
@@ -135,8 +136,24 @@ class CompactNgramModel:
             return 0.0
         return float(self._scores(np.array([w], dtype=np.int64), self._history_ids(history))[0])
 
-    def suggest(self, history: Sequence[str], k: int = 3) -> list[str]:
+    def suggest(self, history: Sequence[str], k: int = 3, prefix: str = "") -> list[str]:
+        """The k most probable next words, optionally restricted to words starting with ``prefix``.
+
+        With a prefix, every word of the vocabulary that starts with it is scored (token ids are
+        alphabetical, so those words form one contiguous range of ids): exact, no approximation.
+        """
         hist = self._history_ids(history)
+        if prefix:
+            lo = bisect.bisect_left(self.tokens, prefix)
+            hi = bisect.bisect_left(self.tokens, prefix + "\U0010ffff")
+            cands = np.arange(lo, hi, dtype=np.int64)
+            if self._excluded:
+                cands = cands[~np.isin(cands, list(self._excluded))]
+            if not len(cands):
+                return []
+            p = self._scores(cands, hist)
+            order = np.lexsort((cands, -p))[:k]
+            return [self.tokens[int(cands[i])] for i in order if p[i] > 0.0]
         parts = []
         for level in range(2, self.order + 1):
             r = self._row(level, hist)
