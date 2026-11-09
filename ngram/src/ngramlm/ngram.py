@@ -71,6 +71,12 @@ class NgramModel:
             num[k] = dict(lower)
         self.num = num
 
+        self._build_index()
+        return self
+
+    def _build_index(self) -> None:
+        """Derive, from the counts in ``self.num``, everything needed to compute probabilities."""
+        num, n = self.num, self.order
         # per history: total mass D(h), number of distinct followers N1+(h .), followers list
         self.den: list[dict[tuple[int, ...], int]] = [{} for _ in range(n + 1)]
         self.fol: list[dict[tuple[int, ...], int]] = [{} for _ in range(n + 1)]
@@ -94,6 +100,23 @@ class NgramModel:
             key=lambda cw: (-cw[0], cw[1]),
         )
         self._rank1 = [w for _, w in ranked]
+
+    def prune(self, min_counts: Sequence[int]) -> "NgramModel":
+        """Drop n-grams whose count is below a threshold, one threshold per order 2..n.
+
+        ``min_counts[i]`` applies to order ``i + 2`` (1 keeps everything). Unigrams are never
+        removed. Counts are those used by the smoothing (raw at the top order, continuation
+        counts below), the discounts are applied to what remains, so every distribution still
+        sums to 1; a history whose entries were all removed falls back to the lower order.
+        """
+        if len(min_counts) != self.order - 1:
+            raise ValueError(f"expected {self.order - 1} thresholds, got {len(min_counts)}")
+        if any(m < 1 for m in min_counts):
+            raise ValueError("thresholds must be at least 1")
+        for k, m in zip(range(2, self.order + 1), min_counts):
+            if m > 1:
+                self.num[k] = {g: c for g, c in self.num[k].items() if c >= m}
+        self._build_index()
         return self
 
     # ------------------------------------------------------------------ #

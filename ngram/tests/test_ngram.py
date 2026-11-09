@@ -136,3 +136,64 @@ def test_invalid_parameters():
 def test_unknown_word_has_zero_probability_and_infinite_perplexity(bigram):
     assert bigram.prob("inconnu", ["le"]) == 0.0
     assert bigram.perplexity([["le", "inconnu"]]) == math.inf
+
+
+# ------------------------------------------------------------------ pruning
+def random_corpus(seed=7, sentences=400):
+    rng = random.Random(seed)
+    words = [f"w{i:02d}" for i in range(40)]
+    weights = [1 / (i + 1) for i in range(40)]
+    return [rng.choices(words, weights, k=rng.randint(2, 9)) for _ in range(sentences)]
+
+
+def test_prune_with_thresholds_of_one_changes_nothing(sentences):
+    reference = NgramModel(order=3).fit(sentences)
+    pruned = NgramModel(order=3).fit(sentences).prune([1, 1])
+    assert pruned.ngram_counts() == reference.ngram_counts()
+    for history in (["mange", "le"], [BOS, "le"], ["chat"]):
+        for w in reference.words:
+            assert pruned.prob(w, history) == pytest.approx(reference.prob(w, history), **APPROX)
+
+
+def test_prune_removes_entries_and_keeps_unigrams(sentences):
+    full = NgramModel(order=3).fit(sentences)
+    pruned = NgramModel(order=3).fit(sentences).prune([2, 2])
+    before, after = full.ngram_counts(), pruned.ngram_counts()
+    assert after[1] == before[1]
+    assert after[2] < before[2] and after[3] < before[3]
+    assert all(c >= 2 for c in pruned.num[2].values()) and all(c >= 2 for c in pruned.num[3].values())
+
+
+@pytest.mark.parametrize("thresholds", [[2, 2], [1, 3], [3, 2]])
+def test_pruned_distribution_still_sums_to_one(thresholds):
+    model = NgramModel(order=3).fit(random_corpus()).prune(thresholds)
+    for history in ([BOS, "w00"], ["w01", "w00"], ["w30", "w31"], ["w39"], ["inconnu"], []):
+        total = sum(model.prob(w, history) for w in model.words)
+        assert total == pytest.approx(1.0, rel=1e-9), history
+
+
+@pytest.mark.parametrize("order,thresholds", [(3, [2, 2]), (4, [1, 2, 3]), (4, [2, 2, 2])])
+def test_pruned_suggest_equals_brute_force(order, thresholds):
+    corpus = random_corpus()
+    model = NgramModel(order=order).fit(corpus).prune(thresholds)
+    rng = random.Random(3)
+    for _ in range(60):
+        sentence = rng.choice(corpus)
+        history = [BOS] + sentence[: rng.randint(0, len(sentence))]
+        assert model.suggest(history, 3) == brute_force_top_k(model, history, 3), history
+
+
+def test_pruned_history_falls_back_to_the_lower_order(sentences):
+    model = NgramModel(order=3).fit(sentences).prune([1, 100])  # every trigram removed
+    assert model.prob("fromage", ["mange", "le"]) == pytest.approx(
+        model.prob("fromage", ["le"]), **APPROX
+    )
+    assert model.ngram_counts()[3] == 0
+
+
+def test_prune_rejects_bad_thresholds(sentences):
+    model = NgramModel(order=3).fit(sentences)
+    with pytest.raises(ValueError):
+        model.prune([2])
+    with pytest.raises(ValueError):
+        model.prune([0, 2])
