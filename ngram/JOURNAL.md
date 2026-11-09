@@ -100,3 +100,7 @@ Top-1/top-3 measured on a fixed random sample of 5,000 validation sentences (see
 | 50,000 | 25.92 % | 41.13 % | 5.34 M | 8.5 ms | 49.5 |
 
 Perplexities are **not comparable** across vocabulary sizes: a smaller vocabulary turns more words into `<unk>`, which are easy to predict. Compare top-k only. From 10k to 50k the gain is +0.8 point of top-3 for +21 % n-grams; latency is also affected by the candidate set growing with the vocabulary (the 7.0 ms of the 20k run was measured with two runs sharing the machine). 20,000 stays the working value until pruning and a clean latency measurement decide.
+
+### Full validation run, order 4 (`results/ngram_kn_valid_full.csv`)
+
+All 276,255 positions, vocabulary 20,000, d=0.75, machine otherwise idle: top-1 **25.52 %**, top-3 **40.80 %**, perplexity 42.2, fit 16.4 s, **5.0 ms** per prediction (pure Python, 4.9 M n-gram entries). The 5,000-sentence sample estimate (40.88 %) was within 0.08 point. Not yet pruned or exported: size on disk is still to measure.

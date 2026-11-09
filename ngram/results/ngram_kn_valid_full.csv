@@ -1,0 +1,2 @@
+order,discount,vocab_size,ngram_types,top1_pct,top3_pct,top1_in_vocab_pct,top3_in_vocab_pct,perplexity_valid,fit_seconds,ms_per_prediction
+4,0.75,20000,4900470,25.52,40.80,26.28,42.03,42.20,16.4,5.041
