@@ -125,3 +125,17 @@ Reading:
 - Pruning bigrams seen once is almost free for top-3: 1,2,2 and 2,2,2 are equal within noise (38.86 vs 38.79) while 2,2,2 is 25 % smaller.
 - Perplexity degrades much faster than top-3 (42 to 63 at 2,2,2): rare n-grams carry probability mass that the model must spread elsewhere, and perplexity is sensitive to that, while the ranking of the top 3 words barely moves. For a keyboard top-k is the metric that matters, but it is a known weakness of plain count cutoffs; a smarter criterion (entropy-based pruning) could do better at equal size.
 - Latency improves up to about 2x because fewer candidates are scored (timings are noisy: two runs shared the machine).
+
+### Compact export (`src/ngramlm/compact.py`, `src/export_model.py`, `results/ngram_kn_export.csv`)
+
+The pruned model is written as sorted numpy arrays (16-bit word ids, 32-bit counts) in one `.npz` file and read back by `CompactNgramModel`, which finds n-grams by binary search over packed 64-bit keys and scores all candidates at once. Order 4, vocabulary 20,000, d=0.75, same 5,000-sentence validation sample.
+
+| min counts | Entries | File | File, compressed | Load | Top-1 | Top-3 | Latency |
+|-----------:|--------:|-----:|-----------------:|-----:|------:|------:|--------:|
+| 2,2,2 | 1,054,301 | **11.2 MB** | 4.1 MB | 0.05 s | 23.98 % | 38.79 % | **0.42 ms** |
+| 2,3,4 | 519,615 | **5.2 MB** | 2.0 MB | 0.03 s | 22.41 % | 36.80 % | **0.40 ms** |
+
+- Accuracy is identical to the dict model (same top-1/top-3 as in the pruning table) and the suggestions are identical on 7,547 checked positions; the tests compare both models on random corpora.
+- Latency drops about 10x (3.6 ms to 0.4 ms) because candidates are scored in one vectorised step instead of a Python loop. The full model (4.9 M entries, 1.2 GB as Python dictionaries) is now 11 MB on disk after pruning, so the size goal is met with a large margin.
+- The "estimated raw MB" of the pruning table was a ruler; actual files are within about 40 % of it (11.2 vs 17.9 MB for 2,2,2).
+- Models are written to `ngram/models/` (git-ignored, never committed).
