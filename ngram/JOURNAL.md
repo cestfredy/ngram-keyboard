@@ -90,3 +90,13 @@ Top-1/top-3 measured on a fixed random sample of 5,000 validation sentences (see
 - Order: top-3 goes 7.55 % (baseline) to 28.5 % (2), 37.8 % (3), 40.9 % (4), 41.5 % (5). Gains shrink fast: 4 to 5 gives +0.6 point for +63 % n-grams and +1.9 ms. Perplexity stops improving at 4 (42.2 vs 42.5).
 - Discount d at order 4: top-3 is flat for d from 0.6 to 0.9 (40.88 / 40.88 / 40.73), falls at 0.95 (40.35); perplexity is best near 0.75 to 0.9 (42.2 / 42.7). d=0.75 kept.
 - Next: vocabulary size (10k/50k), then full-validation run of the chosen configuration, then pruning for size.
+
+### Vocabulary size at order 4, d=0.75 (same 5,000-sentence sample)
+
+| Vocabulary | Top-1 | Top-3 | n-gram types | Latency | Perplexity |
+|-----------:|------:|------:|-------------:|--------:|-----------:|
+| 10,000 | 25.08 % | 40.34 % | 4.40 M | 3.6 ms | 35.5 |
+| 20,000 | 25.71 % | 40.88 % | 4.90 M | 7.0 ms | 42.2 |
+| 50,000 | 25.92 % | 41.13 % | 5.34 M | 8.5 ms | 49.5 |
+
+Perplexities are **not comparable** across vocabulary sizes: a smaller vocabulary turns more words into `<unk>`, which are easy to predict. Compare top-k only. From 10k to 50k the gain is +0.8 point of top-3 for +21 % n-grams; latency is also affected by the candidate set growing with the vocabulary (the 7.0 ms of the 20k run was measured with two runs sharing the machine). 20,000 stays the working value until pruning and a clean latency measurement decide.
