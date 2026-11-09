@@ -162,4 +162,4 @@ The pruned model is exported to a flat binary format (`.ngm`, `export_web` in `c
 - **Speed (Node):** mean 0.2 ms per suggestion without prefix, 0.05 to 0.07 ms with a prefix; reading the 5.2 MB light model takes about 45 ms. In headless Chromium, a whole keystroke (suggest + screen update) takes about 0.6 ms at the median, 1.3 ms at most.
 - **Offline:** tested in Chromium with the network cut and the page reloaded: the app opens, reads the model from the cache and predicts.
 - **Light vs standard:** light = 5.2 MB (min counts 2,3,4), standard = 11.3 MB (2,2,2); the page lets the user switch.
-- Models are not committed (`keyboard/models/` is git-ignored); `ngram/src/make_web_model.py` rebuilds them.
+- Only the two web-demo models are committed (`keyboard/models/ngram-light.ngm`, `ngram-standard.ngm`, 16.5 MB together) so the page can serve them; every other model and the parity files stay git-ignored. `ngram/src/make_web_model.py` rebuilds them.

@@ -14,7 +14,7 @@ python src/make_web_model.py
 cd keyboard && python -m http.server 8000     # puis ouvrir http://localhost:8000
 ```
 
-`keyboard/models/` est ignoré par git (les modèles ne sont pas versionnés).
+Les deux modèles de la démo (`ngram-light.ngm`, 5,2 Mo, et `ngram-standard.ngm`, 11,3 Mo) sont versionnés pour que la page puisse les servir ; les fichiers de vérification `parity_*.json` ne le sont pas. Le modèle vient de Tatoeba (CC-BY 2.0 FR, voir le README du dépôt pour l'attribution).
 
 ## Tests
 
