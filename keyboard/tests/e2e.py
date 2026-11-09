@@ -1,0 +1,216 @@
+"""End-to-end check in a real (headless) Chromium: typing, suggestions, accents, offline, themes.
+
+Needs the built models (ngram/src/make_web_model.py) and Playwright for Python.
+Usage: python keyboard/tests/e2e.py [--shots DIR]
+"""
+
+from __future__ import annotations
+
+import argparse
+import functools
+import http.server
+import threading
+from pathlib import Path
+
+from playwright.sync_api import sync_playwright
+
+ROOT = Path(__file__).resolve().parents[1]
+SYMBOLS = set("0123456789-/:;()€&@\".,?!'")
+
+
+def serve() -> tuple[http.server.ThreadingHTTPServer, str]:
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(ROOT))
+    handler.log_message = lambda *a, **k: None  # type: ignore[method-assign]
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv, f"http://127.0.0.1:{srv.server_address[1]}/index.html"
+
+
+def check(cond: bool, msg: str) -> None:
+    print(("PASS " if cond else "FAIL ") + msg)
+    if not cond:
+        raise SystemExit(1)
+
+
+def key(page, k: str):
+    return page.locator(f'.key[data-key="{k}"]')
+
+
+def type_text(page, text: str) -> None:
+    """Tap the on-screen keys, switching to the symbols layer when needed."""
+    for ch in text:
+        k = "space" if ch == " " else ch
+        if ch in SYMBOLS and page.locator('.key[data-key="layer"]').inner_text() == "123":
+            key(page, "layer").click()
+        key(page, k).click()
+
+
+def sugg(page) -> list[str]:
+    return [b.inner_text() for b in page.locator(".sug").all()]
+
+
+def field_text(page) -> str:
+    return page.inner_text("#text")
+
+
+def open_sheet(page) -> None:
+    page.locator("#btn-settings").click()
+    page.wait_for_selector("#sheet", state="visible")
+
+
+def close_sheet(page) -> None:
+    page.locator('.panel [data-close]').click()
+    page.wait_for_selector("#sheet", state="hidden")
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--shots", type=Path)
+    args = ap.parse_args()
+    shots = args.shots
+    if shots:
+        shots.mkdir(parents=True, exist_ok=True)
+    srv, url = serve()
+    errors: list[str] = []
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        ctx = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2,
+                                  has_touch=True, is_mobile=True, color_scheme="light")
+        page = ctx.new_page()
+        page.on("pageerror", lambda e: errors.append(str(e)))
+        page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
+
+        page.goto(url)
+        page.wait_for_selector("#loading", state="hidden", timeout=20000)
+        check(page.locator("html").get_attribute("data-theme") == "light", "starts in the light theme")
+        check(sugg(page)[0] != "", f"suggestions at sentence start: {sugg(page)}")
+        check(key(page, "a").inner_text() == "A", "first letter of a sentence is capitalised")
+        if shots:
+            page.screenshot(path=str(shots / "01-light-empty.png"))
+
+        # typing, suggestions, taps
+        type_text(page, "je ne sais ")
+        s = sugg(page)
+        check(s[0] == "pas", f"after 'je ne sais ' -> {s}")
+        page.locator(".sug").nth(0).click()
+        check(field_text(page) == "Je ne sais pas ", f"tap inserts the word: {field_text(page)!r}")
+        type_text(page, "p")
+        s = sugg(page)
+        check(all(w.startswith("p") for w in s if w), f"prefix filters: {s}")
+
+        # symbols layer + elision: l' then a word
+        page.locator("#btn-settings").click()
+        page.locator("#reset").click()
+        type_text(page, "je voudrais l'")
+        check(key(page, "a").is_visible() and page.locator('.key[data-key="layer"]').inner_text() == "123",
+              "apostrophe returns to the letters layer")
+        check(field_text(page) == "Je voudrais l'", f"elision typed: {field_text(page)!r}")
+        check(len([w for w in sugg(page) if w]) == 3, f"suggestions after an elision: {sugg(page)}")
+
+        # long press on e -> accent popup -> pick the 2nd accent (è)
+        page.locator("#btn-settings").click()
+        page.locator("#reset").click()
+        type_text(page, "caf")
+        box = key(page, "e").bounding_box()
+        page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        page.mouse.down()
+        page.wait_for_timeout(550)
+        check(page.locator("#accents").is_visible(), "long press opens the accent popup")
+        if shots:
+            page.screenshot(path=str(shots / "02-accents.png"))
+        accs = page.locator("#accents .acc").all()
+        check([a.inner_text() for a in accs] == list("éèêë"), "popup shows é è ê ë")
+        page.mouse.up()
+        check(field_text(page) == "Café", f"release picks the first accent: {field_text(page)!r}")
+        page.locator("#btn-settings").click()
+        page.locator("#reset").click()
+        type_text(page, "p")
+        box = key(page, "e").bounding_box()
+        page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        page.mouse.down()
+        page.wait_for_timeout(550)
+        second = page.locator("#accents .acc").nth(1).bounding_box()
+        page.mouse.move(second["x"] + second["width"] / 2, second["y"] + second["height"] / 2, steps=4)
+        page.mouse.up()
+        check(field_text(page) == "Pè", f"sliding to the 2nd accent picks è: {field_text(page)!r}")
+
+        # return sends the message
+        page.locator("#btn-settings").click()
+        page.locator("#reset").click()
+        type_text(page, "je ne sais pas")
+        key(page, "enter").click()
+        check(page.locator(".msg").count() == 1 and page.inner_text(".msg") == "Je ne sais pas"
+              and field_text(page) == "", "return sends the message and empties the field")
+        if shots:
+            page.screenshot(path=str(shots / "03-sent.png"))
+
+        # theme button
+        page.locator("#btn-theme").click()
+        check(page.locator("html").get_attribute("data-theme") == "dark", "moon button switches to dark")
+        if shots:
+            page.screenshot(path=str(shots / "04-dark.png"))
+        page.locator("#btn-theme").click()
+        check(page.locator("html").get_attribute("data-theme") == "light", "sun button switches back")
+        page.locator("#btn-theme").click()  # dark again; remembered after reload
+        page.reload()
+        page.wait_for_selector("#loading", state="hidden", timeout=20000)
+        check(page.locator("html").get_attribute("data-theme") == "dark", "theme choice is remembered")
+
+        # settings sheet
+        open_sheet(page)
+        facts = page.inner_text("#facts")
+        check("4-grammes" in facts and "Kneser-Ney" in facts and "Top-3" in facts, "settings show the model facts")
+        if shots:
+            page.screenshot(path=str(shots / "05-settings-dark.png"))
+        page.locator('[data-theme-pref="light"]').click()
+        check(page.locator("html").get_attribute("data-theme") == "light", "theme segment works")
+        page.locator('[data-theme-pref="auto"]').click()
+        if shots:
+            page.screenshot(path=str(shots / "06-settings-light.png"))
+        page.locator('[data-model="standard"]').click()
+        page.wait_for_selector("#loading", state="hidden", timeout=20000)
+        check("standard" in page.evaluate("window.__ngramDemo.state.modelName") and "11,3" in page.inner_text("#facts"),
+              "standard model loads from the settings")
+        page.locator('[data-model="light"]').click()
+        page.wait_for_selector("#loading", state="hidden", timeout=20000)
+        close_sheet(page)
+
+        # per-keystroke speed
+        ms = page.evaluate("""() => {
+            const d = window.__ngramDemo; const t = [];
+            for (const ch of "il fait très beau aujourd'hui et je voudrais ") {
+              const t0 = performance.now(); d.typeLetter(ch); t.push(performance.now() - t0);
+            } return t; }""")
+        ms.sort()
+        print(f"INFO keystroke update (suggest + render): median {ms[len(ms)//2]:.2f} ms, max {ms[-1]:.2f} ms")
+        check(ms[len(ms) // 2] < 10, "median keystroke update under 10 ms")
+
+        # offline
+        page.evaluate("navigator.serviceWorker.ready.then(() => true)")
+        page.reload()
+        page.wait_for_selector("#loading", state="hidden", timeout=20000)
+        open_sheet(page)
+        check("cache du navigateur" in page.inner_text("#facts") and "✓ prêt" in page.inner_text("#facts"),
+              "second visit: model read from the cache, offline ready")
+        close_sheet(page)
+        ctx.set_offline(True)
+        page.reload()
+        page.wait_for_selector("#loading", state="hidden", timeout=20000)
+        # "ù" is only reachable by long press: feed it through the page's own typing function
+        page.evaluate("""() => { const d = window.__ngramDemo;
+            for (const ch of "où") d.typeLetter(ch); d.press("space");
+            for (const ch of "est") d.typeLetter(ch); d.press("space");
+            for (const ch of "la") d.typeLetter(ch); d.press("space"); }""")
+        s = sugg(page)
+        check(s[0] == "gare", f"OFFLINE reload works, 'où est la ' -> {s}")
+        if shots:
+            page.screenshot(path=str(shots / "07-offline.png"))
+        ctx.set_offline(False)
+        browser.close()
+    srv.shutdown()
+    check(not errors, f"no console/page errors {errors}")
+    print("ALL OK")
+
+
+if __name__ == "__main__":
+    main()
