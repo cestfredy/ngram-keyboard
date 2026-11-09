@@ -153,3 +153,13 @@ Definition: a simulated user types each word letter by letter; before every lett
 - A prediction bar that knows no context already saves 38 % on this corpus, because the most frequent words starting with one or two letters are short function words. The context brings the model to 56 %, i.e. +18 points, and halves the letters typed before a hit (2.0 to 1.0).
 - The lighter model (`2,3,4`, half the size) loses only 1.1 point of savings, much less than the 4 points it lost on top-3 with no letter typed: once a letter or two is typed, the candidate set is small and context matters less.
 - Caveats: Tatoeba is short, simple, translated sentences (median 6 words), so these figures are optimistic compared with real messages; they assume the user always sees and taps a correct suggestion at no cost. They must be re-measured on another corpus (OpenSubtitles) before being quoted as a general result.
+
+### Web demo (`keyboard/`, plain HTML/CSS/JS)
+
+The pruned model is exported to a flat binary format (`.ngm`, `export_web` in `compact.py`) read directly by `keyboard/js/model.js`: no dependency, same formula and tie-break as the Python model. The model is downloaded once, stored with the browser's Cache API, and a service worker keeps the app itself, so after the first visit everything works with no network.
+
+- **Parity:** on 3,000 real validation positions per model (with and without a typed prefix), the JavaScript reader gives exactly the same 3 suggestions as the Python model (0 mismatches, standard and light); 10 unit tests also compare it with Python on a tiny model (450 suggestion cases, 151 probabilities, 18 tokenisation cases).
+- **Speed (Node):** mean 0.2 ms per suggestion without prefix, 0.05 to 0.07 ms with a prefix; reading the 5.2 MB light model takes about 45 ms. In headless Chromium, a whole keystroke (suggest + screen update) takes about 0.6 ms at the median, 1.3 ms at most.
+- **Offline:** tested in Chromium with the network cut and the page reloaded: the app opens, reads the model from the cache and predicts.
+- **Light vs standard:** light = 5.2 MB (min counts 2,3,4), standard = 11.3 MB (2,2,2); the page lets the user switch.
+- Models are not committed (`keyboard/models/` is git-ignored); `ngram/src/make_web_model.py` rebuilds them.
