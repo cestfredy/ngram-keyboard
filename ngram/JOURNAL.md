@@ -16,6 +16,7 @@ One entry per decision, with the number that justified it.
 | 2026-11-07 | Store counts, compute probabilities on demand | Swap smoothing without recounting |
 | 2026-11-07 | Split elisions (`l'` + `ami`), keep hyphenated words whole | Smaller vocabulary; 39.75 % of sentences have an elision, `est-ce` alone appears 13,334 times |
 | 2026-11-07 | Deduplicate on token sequences, before the split | 8,597 duplicates vs 149 on raw lowercased text: punctuation hid them |
+| 2026-11-08 | Tune top-k on a 5,000-sentence validation sample | Full validation costs 15+ min per bigram run in pure Python; perplexity stays on full validation |
 | 2026-11-07 | Vocabulary from the train split only | The test set must not influence the model |
 
 ## Results
@@ -23,6 +24,10 @@ One entry per decision, with the number that justified it.
 | Model | Vocab | Smoothing | Perplexity (valid) | Top-1 | Top-3 | Keystroke savings | Size | Latency |
 |-------|-------|-----------|--------------------|-------|-------|-------------------|------|---------|
 | Unigram baseline (always `de je est`) | 20,000 | none | n/a | 3.11 % | 7.55 % | n/a | ~0 | ~0 |
+| Interpolated Kneser-Ney, n=2 (d=0.75) | 20,000 | KN | 81.0 | 14.85 % | 28.45 % | n/a | | 3.4 ms |
+| Interpolated Kneser-Ney, n=3 (d=0.75) | 20,000 | KN | 48.1 | 22.24 % | 37.78 % | n/a | | 5.1 ms |
+| Interpolated Kneser-Ney, n=4 (d=0.75) | 20,000 | KN | 42.2 | 25.71 % | 40.88 % | n/a | | 7.0 ms |
+| Interpolated Kneser-Ney, n=5 (d=0.75) | 20,000 | KN | 42.5 | 26.46 % | 41.48 % | n/a | | 8.9 ms |
 
 Next-word prediction with no letter typed, on the validation split (276,255 positions, `</s>` not evaluated, an out-of-vocabulary target counts as a miss). The baseline suggests the same three words everywhere, so its overall top-1 and top-3 are identical for 10k, 20k and 50k (`results/baseline_unigram.csv`); only the accuracy restricted to known words moves (top-3: 7.98 % at 10k, 7.77 % at 20k, 7.63 % at 50k). Any n-gram model has to beat **7.55 % top-3** to justify itself.
 
@@ -77,3 +82,11 @@ Vocabulary = the N most frequent TRAIN tokens; everything else becomes `<unk>`.
 Reading: this is the ceiling on what the model can ever propose. With 20,000 words, 2.9 % of the words to predict are out of reach whatever the model does. Going from 20k to 50k halves the loss but multiplies the model size; the choice is made later with the size/accuracy trade-off.
 
 Observation: `tom` is the 22nd most frequent train token (39,275 occurrences) and appears in 2,220 of 35,813 validation sentences (6.2 %).
+
+### Kneser-Ney n-grams on validation (`results/ngram_kn_valid.csv`)
+
+Top-1/top-3 measured on a fixed random sample of 5,000 validation sentences (seed 42, about 38k positions, roughly ±0.3 point); perplexity on the full validation split. Latency is pure Python, one core, with two runs sharing the machine, so treat it as an upper bound. Test split untouched.
+
+- Order: top-3 goes 7.55 % (baseline) to 28.5 % (2), 37.8 % (3), 40.9 % (4), 41.5 % (5). Gains shrink fast: 4 to 5 gives +0.6 point for +63 % n-grams and +1.9 ms. Perplexity stops improving at 4 (42.2 vs 42.5).
+- Discount d at order 4: top-3 is flat for d from 0.6 to 0.9 (40.88 / 40.88 / 40.73), falls at 0.95 (40.35); perplexity is best near 0.75 to 0.9 (42.2 / 42.7). d=0.75 kept.
+- Next: vocabulary size (10k/50k), then full-validation run of the chosen configuration, then pruning for size.
