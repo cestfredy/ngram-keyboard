@@ -1,0 +1,4 @@
+model,words,keys_without,keys_with,savings_pct,hit_without_typing_pct,hit_before_end_pct,avg_letters_before_hit,ms_per_word
+o1_v20000,275943,1446648,892256,38.32,7.56,86.93,2.00,0.105
+o4_v20000_m222,275943,1446648,633941,56.18,38.70,93.04,1.03,0.513
+o4_v20000_m234,275943,1446648,649225,55.12,36.70,92.85,1.08,0.495

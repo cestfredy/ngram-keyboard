@@ -139,3 +139,17 @@ The pruned model is written as sorted numpy arrays (16-bit word ids, 32-bit coun
 - Latency drops about 10x (3.6 ms to 0.4 ms) because candidates are scored in one vectorised step instead of a Python loop. The full model (4.9 M entries, 1.2 GB as Python dictionaries) is now 11 MB on disk after pruning, so the size goal is met with a large margin.
 - The "estimated raw MB" of the pruning table was a ruler; actual files are within about 40 % of it (11.2 vs 17.9 MB for 2,2,2).
 - Models are written to `ngram/models/` (git-ignored, never committed).
+
+### Keystroke savings (`src/ngramlm/keystrokes.py`, `src/evaluate_keystrokes.py`, `results/ngram_kn_keystrokes.csv`)
+
+Definition: a simulated user types each word letter by letter; before every letter the keyboard shows the 3 most probable words starting with what is typed; as soon as the word appears it is tapped (1 key press, inserts the word and the space). Without prediction a word costs `len(word) + 1`. Out-of-vocabulary words are typed in full with their real length; `<num>` tokens are skipped (their length is lost after cleaning). Savings = 1 - keys with / keys without. Whole validation split, 275,943 words, 1,446,648 key presses without prediction.
+
+| Model | Savings | Word proposed before any letter | Word proposed before its last letter | Letters typed before a hit | Latency |
+|-------|--------:|-------------------:|--------------------:|------:|--------:|
+| Unigram, no context (20k) | 38.32 % | 7.56 % | 86.93 % | 2.00 | 0.11 ms/word |
+| 4-gram, pruned `2,2,2` (11.2 MB) | **56.18 %** | 38.70 % | 93.04 % | 1.03 | 0.51 ms/word |
+| 4-gram, pruned `2,3,4` (5.2 MB) | **55.12 %** | 36.70 % | 92.85 % | 1.08 | 0.50 ms/word |
+
+- A prediction bar that knows no context already saves 38 % on this corpus, because the most frequent words starting with one or two letters are short function words. The context brings the model to 56 %, i.e. +18 points, and halves the letters typed before a hit (2.0 to 1.0).
+- The lighter model (`2,3,4`, half the size) loses only 1.1 point of savings, much less than the 4 points it lost on top-3 with no letter typed: once a letter or two is typed, the candidate set is small and context matters less.
+- Caveats: Tatoeba is short, simple, translated sentences (median 6 words), so these figures are optimistic compared with real messages; they assume the user always sees and taps a correct suggestion at no cost. They must be re-measured on another corpus (OpenSubtitles) before being quoted as a general result.
