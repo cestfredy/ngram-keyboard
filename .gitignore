@@ -4,8 +4,12 @@
 !**/data/raw/.gitkeep
 !**/data/processed/.gitkeep
 
-# Trained models (publish a small final model as a release instead)
+# Trained models stay out of git, except the two small web-demo models (see keyboard/README.md)
 models/
+!keyboard/models/
+keyboard/models/*
+!keyboard/models/ngram-light.ngm
+!keyboard/models/ngram-standard.ngm
 
 # Python
 __pycache__/
