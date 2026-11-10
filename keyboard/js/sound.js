@@ -62,6 +62,38 @@ export function soundKind(key) {
 
 // Call from a user gesture (touch, click, key): creates the audio context once and wakes it up if it is
 // not running (iOS starts it suspended, and sets it to "interrupted" after a call or a tab switch).
+// iOS plays Web Audio as "ambient" sound: it follows the ringer volume and the silent switch.
+// Declaring a "playback" session (or playing a silent <audio> element, for older iOS) makes the
+// clicks follow the media volume instead, like any other sound.
+let keepAlive = null;
+function useMediaVolume() {
+  try {
+    if (navigator.audioSession) navigator.audioSession.type = "playback";
+  } catch {
+    /* unsupported */
+  }
+  if (keepAlive) {
+    if (keepAlive.paused) keepAlive.play().catch(() => {});
+    return;
+  }
+  try {
+    const n = 800; // 0.1 s of silence, 8 kHz mono 8-bit
+    const b = new Uint8Array(44 + n);
+    const v = new DataView(b.buffer);
+    const s = (o, x) => [...x].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+    s(0, "RIFF"); v.setUint32(4, 36 + n, true); s(8, "WAVEfmt ");
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+    s(36, "data"); v.setUint32(40, n, true); b.fill(128, 44);
+    keepAlive = new Audio(URL.createObjectURL(new Blob([b], { type: "audio/wav" })));
+    keepAlive.loop = true;
+    keepAlive.setAttribute("playsinline", "");
+    keepAlive.play().catch(() => {});
+  } catch {
+    keepAlive = null;
+  }
+}
+
 export function unlockAudio() {
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return;
@@ -76,6 +108,7 @@ export function unlockAudio() {
     master.connect(ctx.destination);
     noise = makeNoise(ctx);
   }
+  if (enabled) useMediaVolume();
   if (ctx.state !== "running") ctx.resume().catch(() => {});
 }
 
