@@ -217,6 +217,7 @@ function wireKeys() {
     const key = b.dataset.key;
     down = { b, key, accents: false, timer: null, repeat: null };
     b.classList.add("down");
+    if (key.length === 1) showPop(b); // character keys only (shift, space, return... have longer names)
     if (state.layer === "letters" && VARIANTS[key]) {
       down.timer = setTimeout(() => openAccents(b, key), LONG_PRESS_MS);
     } else if (key === "back") {
@@ -233,6 +234,7 @@ function wireKeys() {
     clearTimeout(d.timer);
     clearInterval(d.repeat);
     d.b.classList.remove("down");
+    hidePop();
     if (d.accents) {
       const sel = $("#accents .acc.sel");
       closeAccents();
@@ -267,7 +269,24 @@ function wireKeys() {
   });
 }
 
+function showPop(keyEl) {
+  const pop = $("#pop");
+  pop.textContent = keyEl.textContent;
+  pop.hidden = false;
+  const kb = $(".kbd").getBoundingClientRect();
+  const r = keyEl.getBoundingClientRect();
+  const w = r.width + 18;
+  pop.style.width = `${w}px`;
+  pop.style.left = `${Math.max(2, Math.min(kb.width - w - 2, r.left - kb.left + r.width / 2 - w / 2))}px`;
+  pop.style.top = `${r.top - kb.top - pop.offsetHeight - 4}px`;
+}
+
+function hidePop() {
+  $("#pop").hidden = true;
+}
+
 function openAccents(keyEl, key) {
+  hidePop(); // the accent strip takes over from the bubble
   const up = state.shift || atSentenceStart(state.text);
   const box = $("#accents");
   box.textContent = "";
@@ -464,6 +483,37 @@ function closeSheet() {
   sheetTimer = setTimeout(() => { sheet.hidden = true; }, 260);
 }
 
+// Pull the sheet down by its handle: it follows the finger, then closes if dragged far or flicked, else springs back.
+function wireSheetDrag() {
+  const grip = $(".panel-grip"), panel = $(".panel"), backdrop = $(".backdrop");
+  let drag = null;
+  grip.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("button") || !sheetIsOpen()) return;
+    drag = { id: e.pointerId, y0: e.clientY, t0: performance.now(), dy: 0 };
+    grip.setPointerCapture(e.pointerId);
+    panel.style.transition = "none";
+    backdrop.style.transition = "none";
+  });
+  grip.addEventListener("pointermove", (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    drag.dy = Math.max(0, e.clientY - drag.y0);
+    panel.style.transform = `translateY(${drag.dy}px)`;
+    backdrop.style.opacity = String(Math.max(0, 1 - drag.dy / panel.offsetHeight));
+  });
+  const end = (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const { dy, t0 } = drag;
+    drag = null;
+    const speed = dy / Math.max(1, performance.now() - t0); // px per ms
+    const dismiss = e.type === "pointerup" && (dy > panel.offsetHeight * 0.3 || (speed > 0.5 && dy > 24));
+    // back to the stylesheet: from the dragged position, it either springs open again or slides out
+    panel.style.transition = panel.style.transform = backdrop.style.transition = backdrop.style.opacity = "";
+    if (dismiss) closeSheet();
+  };
+  grip.addEventListener("pointerup", end);
+  grip.addEventListener("pointercancel", end);
+}
+
 function wireDesktopKeyboard() {
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey || !state.model || sheetIsOpen()) return;
@@ -507,6 +557,7 @@ async function init() {
   wireKeys();
   wireDesktopKeyboard();
   wireInstall();
+  wireSheetDrag();
 
   $("#btn-theme").addEventListener("click", () => {
     const dark = document.documentElement.dataset.theme === "dark";

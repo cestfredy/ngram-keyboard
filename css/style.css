@@ -77,8 +77,14 @@ body { display: flex; justify-content: center; background: #1e1e1e; }
 .key.on { background: var(--shift-on); color: #111; }
 .key svg { width: 22px; height: 22px; }
 .home { width: 134px; height: 5px; border-radius: 3px; background: var(--home); margin: 8px auto 0; }
-@media (display-mode: standalone) { .home { display: none; } }
+/* the page draws its own home bar only on desktop, where it is shown as a phone; real phones have the real one */
+@media (display-mode: standalone), (hover: none) { .home { display: none; } }
 @media (max-height: 700px) { .key { height: 40px; } .keys { gap: 8px; } }
+
+/* key preview bubble (iOS style): shown above the pressed key, no animation (keys are hit hundreds of times) */
+.pop { position: absolute; z-index: 5; pointer-events: none; display: grid; place-items: center; height: 58px; background: var(--key);
+  color: var(--key-text); font-size: 2rem; border-radius: 10px; box-shadow: 0 3px 12px rgba(0,0,0,.35); }
+.pop[hidden] { display: none; }
 
 /* long-press accents */
 .accents { position: absolute; z-index: 4; display: flex; gap: 2px; padding: 6px; background: var(--key); color: var(--key-text);
@@ -106,6 +112,9 @@ body { display: flex; justify-content: center; background: #1e1e1e; }
 .seg button, .wide, .icon { transition: transform 160ms ease-out, background-color 150ms ease, color 150ms ease; }
 .seg button:active, .wide:active { transform: scale(.97); }
 .icon:active { transform: scale(.92); }
+/* drag handle: the sheet can be pulled down from here (the rest of the panel scrolls) */
+.panel-grip { touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+.grabber { display: block; width: 36px; height: 5px; border-radius: 3px; background: var(--line); margin: -6px auto 8px; }
 .panel-head { display: flex; justify-content: space-between; align-items: center; }
 h2 { margin: 0; font-size: 1.2rem; }
 h3 { margin: 18px 0 8px; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
