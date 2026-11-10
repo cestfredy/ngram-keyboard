@@ -175,6 +175,43 @@ def main() -> None:
         page.wait_for_selector("#loading", state="hidden", timeout=20000)
         close_sheet(page)
 
+        # key preview bubble: shown while a character key is held, gone on release, absent for special keys
+        box = key(page, "e").bounding_box()
+        page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        page.mouse.down()
+        pop = page.locator("#pop").bounding_box()
+        check(page.is_visible("#pop") and page.inner_text("#pop") in ("e", "E") and pop["y"] + pop["height"] <= box["y"],
+              "key bubble appears above the pressed key")
+        page.mouse.up()
+        check(not page.is_visible("#pop"), "key bubble disappears on release")
+        sb = key(page, "space").bounding_box()
+        page.mouse.move(sb["x"] + 10, sb["y"] + 10)
+        page.mouse.down()
+        check(not page.is_visible("#pop"), "no bubble on the space key")
+        page.mouse.up()
+
+        # pull the settings sheet down by its handle: a short pull springs back, a long one closes it
+        open_sheet(page)
+        page.wait_for_timeout(600)
+        g = page.locator(".grabber").bounding_box()
+        x, y = g["x"] + g["width"] / 2, g["y"] + 2
+        page.mouse.move(x, y)
+        page.mouse.down()
+        for i in range(1, 5):  # slow pull (10 px every 100 ms), so it is not read as a flick
+            page.mouse.move(x, y + 10 * i)
+            page.wait_for_timeout(100)
+        page.mouse.up()
+        page.wait_for_timeout(700)
+        check(page.evaluate("document.querySelector('#sheet').classList.contains('open')"), "short pull: the sheet springs back")
+        page.mouse.move(x, y)
+        page.mouse.down()
+        page.mouse.move(x, y + 300, steps=6)
+        page.mouse.up()
+        page.wait_for_selector("#sheet", state="hidden", timeout=2000)
+        check(True, "long pull closes the sheet")
+        open_sheet(page)
+        close_sheet(page)
+
         # per-keystroke speed
         ms = page.evaluate("""() => {
             const d = window.__ngramDemo; const t = [];
