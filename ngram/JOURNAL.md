@@ -18,6 +18,7 @@ One entry per decision, with the number that justified it.
 | 2026-11-07 | Deduplicate on token sequences, before the split | 8,597 duplicates vs 149 on raw lowercased text: punctuation hid them |
 | 2026-11-08 | Tune top-k on a 5,000-sentence validation sample | Full validation costs 15+ min per bigram run in pure Python; perplexity stays on full validation |
 | 2026-11-07 | Vocabulary from the train split only | The test set must not influence the model |
+| 2026-11-10 | Test split evaluated once, on the models frozen after validation (`src/evaluate_test.py`, locked after the run) | Vocabulary 20,000, order 4, d=0.75, pruning `2,2,2` (standard) and `2,3,4` (light), nothing tuned on test |
 
 ## Results
 
@@ -163,3 +164,18 @@ The pruned model is exported to a flat binary format (`.ngm`, `export_web` in `c
 - **Offline:** tested in Chromium with the network cut and the page reloaded: the app opens, reads the model from the cache and predicts.
 - **Light vs standard:** light = 5.2 MB (min counts 2,3,4), standard = 11.3 MB (2,2,2); the page lets the user switch.
 - Only the two web-demo models are committed (`keyboard/models/ngram-light.ngm`, `ngram-standard.ngm`, 16.5 MB together) so the page can serve them; every other model and the parity files stay git-ignored. `ngram/src/make_web_model.py` rebuilds them.
+
+## Final evaluation on the test split (2026-11-10, `results/test_final.csv`)
+
+The test split (35,814 sentences, 275,535 word positions) was read once, by `src/evaluate_test.py`, after every choice was frozen. The script was first checked on 300 validation sentences, takes a lock before reading the test file and refuses to run again. Top-1/top-3 use **all** test positions (no sampling), `</s>` is not evaluated, an out-of-vocabulary target counts as a miss; perplexity includes `</s>`; keystroke savings use the same simulation as on validation (3 suggestions).
+
+| Model | Entries | Perplexity | Top-1 | Top-3 | Keystroke savings |
+|-------|--------:|-----------:|------:|------:|------------------:|
+| Unigram baseline (`de je est`, prefix-filtered in the simulation) | | n/a | 3.08 % | 7.55 % | 38.45 % |
+| 4-gram, no pruning | 4,900,470 | 41.5 | 25.75 % | 41.11 % | |
+| 4-gram, standard (`2,2,2`, 11.3 MB) | 1,054,301 | 62.1 | 24.28 % | 39.05 % | 56.41 % |
+| 4-gram, light (`2,3,4`, 5.2 MB) | 519,615 | 83.4 | 22.77 % | 36.99 % | 55.36 % |
+
+- Accuracy and keystroke savings on test are 0.2 to 0.4 point above validation (top-3 on validation: 40.80 / 38.79 / 36.80; keystroke savings: 56.18 / 55.12) and perplexity is 1 to 2 % lower (41.5 / 62.1 / 83.4 against 42.2 / 63.0 / 85.0). That is the size of the sampling noise measured on validation (about 0.3 point), and the direction is the same for every model, so there is no sign of overfitting to the validation split.
+- The ranking of the models and the cost of pruning are unchanged: the light model loses 4.1 points of top-3 against the unpruned model but only 1.05 point of keystroke savings against the standard one.
+- The test split is now spent: no further tuning may use it. Any new variant (another corpus, another smoothing) needs a new held-out set.

@@ -15,7 +15,7 @@ Given the words already typed, the model suggests the 3 most likely next words, 
 - **Model:** 4-gram, interpolated Kneser-Ney (discount 0.75), 20,000-word vocabulary, count-threshold pruning.
 - **Size:** 5.2 MB (light) or 11.3 MB (standard) in a compact binary format read directly by JavaScript.
 - **Speed:** about 0.5 ms per keystroke (suggestions plus rendering) in Chromium; each prediction needs less than 1 ms in the Python reader.
-- **Quality:** the right word is among the 3 suggestions 36.8 % to 38.8 % of the time before any letter is typed, and 55 % to 56 % of keystrokes are saved in a typing simulation (details below).
+- **Quality:** on the held-out test split, the right word is among the 3 suggestions 37.0 % to 39.1 % of the time before any letter is typed, and 55 % to 56 % of keystrokes are saved in a typing simulation (details below).
 
 The settings panel shows the loaded model (size, n-gram count, load time, offline status), its validated figures, and live counters for the current session (keys pressed, characters written, saving, time per prediction):
 
@@ -23,7 +23,22 @@ The settings panel shows the loaded model (size, n-gram count, load time, offlin
 
 ## Results
 
-All numbers are measured on the **validation split** (35,813 sentences, 276,255 word positions). The test split has not been used yet; it will be evaluated once, at the very end, and its numbers will be added here.
+### Final results: test split
+
+The test split (35,814 sentences, 275,535 word positions) was evaluated **once**, at the very end, on models frozen after validation: nothing was tuned on it, and the script locks itself after running (`ngram/src/evaluate_test.py`, `ngram/results/test_final.csv`).
+
+| Model | Perplexity | Top-1 | Top-3 | Keystroke savings |
+|-------|-----------:|------:|------:|------------------:|
+| Unigram baseline (most frequent words, ignores context) | n/a | 3.08 % | 7.55 % | 38.45 % |
+| 4-gram, no pruning | 41.5 | 25.75 % | 41.11 % | |
+| 4-gram, standard (shipped, 11.3 MB) | 62.1 | 24.28 % | 39.05 % | 56.41 % |
+| 4-gram, light (shipped, 5.2 MB) | 83.4 | 22.77 % | 36.99 % | 55.36 % |
+
+Accuracy and keystroke savings on test are 0.2 to 0.4 point above validation and perplexity is 1 to 2 % lower, about the size of the sampling noise, so the validation choices did not overfit. Top-1 and top-3 use every test position (no sampling).
+
+### Development results: validation split
+
+All numbers below are measured on the **validation split** (35,813 sentences, 276,255 word positions), which was used to choose the model.
 
 | Model | Perplexity | Top-1 | Top-3 | Keystroke savings |
 |-------|-----------:|------:|------:|------------------:|
