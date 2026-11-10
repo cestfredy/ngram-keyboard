@@ -109,10 +109,15 @@ body { display: flex; justify-content: center; background: #1e1e1e; }
 .panel-head { display: flex; justify-content: space-between; align-items: center; }
 h2 { margin: 0; font-size: 1.2rem; }
 h3 { margin: 18px 0 8px; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
-.seg { display: flex; background: var(--panel-soft); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg { position: relative; display: flex; background: var(--panel-soft); border-radius: 10px; padding: 3px; gap: 3px; }
 .seg button { flex: 1; appearance: none; border: 0; background: transparent; color: var(--text); font: inherit; font-size: .9rem;
-  padding: 8px 6px; border-radius: 8px; cursor: pointer; }
-.seg button.on { background: var(--accent); color: #fff; font-weight: 600; }
+  padding: 8px 6px; border-radius: 8px; cursor: pointer; position: relative; z-index: 1; }
+.seg button.on { color: #fff; font-weight: 600; }
+/* the blue pill slides under the buttons (position set from JS) */
+.thumb { position: absolute; top: 3px; bottom: 3px; left: 0; width: var(--w, 0); transform: translateX(var(--x, 0)); background: var(--accent);
+  border-radius: 8px; transition: transform 300ms cubic-bezier(.32, .72, 0, 1), width 300ms cubic-bezier(.32, .72, 0, 1); }
+.thumb.snap { transition: none; }
+@media (prefers-reduced-motion: reduce) { .thumb { transition: none; } }
 .facts { margin: 10px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: .86rem; }
 .facts dt { color: var(--muted); }
 .facts dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
