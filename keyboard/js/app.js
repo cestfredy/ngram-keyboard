@@ -247,7 +247,8 @@ function wireKeys() {
     }
   };
   document.addEventListener("pointerup", end);
-  document.addEventListener("pointerup", unlockAudio);
+  // iOS only lets audio start from touchend / click (not pointerdown), so unlock on all of them
+  for (const type of ["pointerup", "touchend", "click"]) document.addEventListener(type, unlockAudio, { capture: true });
   document.addEventListener("pointercancel", end);
   document.addEventListener("pointermove", (e) => {
     if (!down?.accents) return;

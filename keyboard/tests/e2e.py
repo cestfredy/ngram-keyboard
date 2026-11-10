@@ -214,6 +214,18 @@ def main() -> None:
         page.locator('[data-sound="on"]').click()
         close_sheet(page)
 
+        # click loudness, measured by rendering each sound offline: audible but never clipping
+        levels = page.evaluate("""async () => {
+            const m = await import('./js/sound.js'); const out = {};
+            for (const name of Object.keys(m.KINDS)) {
+              const sr = 44100, c = new OfflineAudioContext(1, Math.ceil(sr * 0.15), sr);
+              const master = c.createGain(); master.connect(c.destination);
+              m.scheduleClick(c, master, m.makeNoise(c), name, 0.01);
+              const x = (await c.startRendering()).getChannelData(0);
+              out[name] = Math.max(...x.map(Math.abs));
+            } return out; }""")
+        check(all(0.4 <= v <= 0.95 for v in levels.values()), f"click levels audible and not clipping {levels}")
+
         # pull the settings sheet down by its handle: a short pull springs back, a long one closes it
         open_sheet(page)
         page.wait_for_timeout(600)

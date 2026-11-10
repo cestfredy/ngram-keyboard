@@ -2,11 +2,49 @@
 // Like on iOS there are three sounds: letters, delete, and modifier keys (shift, space, return, 123).
 // Browsers only start audio after a user gesture, and iOS also mutes Web Audio when the silent switch is on.
 
-const KINDS = {
-  letter: { band: 3400, q: 1.1, tone: 1500, dur: 0.03, noise: 0.55, tonal: 0.18 },
-  delete: { band: 2300, q: 1.0, tone: 900, dur: 0.04, noise: 0.6, tonal: 0.22 },
-  modifier: { band: 1500, q: 1.0, tone: 700, dur: 0.04, noise: 0.55, tonal: 0.22 },
+// Each click = a short pitched "tock" (a sine that falls a little) + a very short high-passed noise "tick".
+// Levels give a peak of about 0.55 to 0.7 of full scale, around -19 dBFS on average over the click
+// (checked in tests/e2e.py; the first version peaked at 0.15 and was inaudible on a phone speaker).
+export const KINDS = {
+  letter: { body: 1800, bodyGain: 0.55, decay: 0.045, noiseHP: 2500, noiseGain: 0.35, noiseDecay: 0.012 },
+  delete: { body: 1100, bodyGain: 0.6, decay: 0.06, noiseHP: 2000, noiseGain: 0.3, noiseDecay: 0.014 },
+  modifier: { body: 1400, bodyGain: 0.58, decay: 0.055, noiseHP: 2200, noiseGain: 0.3, noiseDecay: 0.013 },
 };
+
+export function makeNoise(actx) {
+  const buf = actx.createBuffer(1, Math.ceil(actx.sampleRate * 0.05), actx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  return buf;
+}
+
+// Schedules one click on any audio context (real or offline) starting at time `t`.
+export function scheduleClick(actx, dest, noise, kind, t) {
+  const k = KINDS[kind] ?? KINDS.letter;
+
+  const osc = actx.createOscillator();
+  osc.frequency.setValueAtTime(k.body, t);
+  osc.frequency.exponentialRampToValueAtTime(k.body * 0.7, t + k.decay);
+  const og = actx.createGain();
+  og.gain.setValueAtTime(0.0001, t);
+  og.gain.linearRampToValueAtTime(k.bodyGain, t + 0.001); // 1 ms attack: no pop
+  og.gain.exponentialRampToValueAtTime(0.0001, t + k.decay);
+  osc.connect(og).connect(dest);
+  osc.start(t);
+  osc.stop(t + k.decay + 0.01);
+
+  const src = actx.createBufferSource();
+  src.buffer = noise;
+  const hp = actx.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = k.noiseHP;
+  const ng = actx.createGain();
+  ng.gain.setValueAtTime(k.noiseGain, t);
+  ng.gain.exponentialRampToValueAtTime(0.0001, t + k.noiseDecay);
+  src.connect(hp).connect(ng).connect(dest);
+  src.start(t);
+  src.stop(t + k.noiseDecay + 0.01);
+}
 
 let ctx = null;
 let master = null;
@@ -22,7 +60,8 @@ export function soundKind(key) {
   return key.length === 1 ? "letter" : "modifier";
 }
 
-// Call from a user gesture (pointer, key): creates the audio context once and wakes it up if it was suspended.
+// Call from a user gesture (touch, click, key): creates the audio context once and wakes it up if it is
+// not running (iOS starts it suspended, and sets it to "interrupted" after a call or a tab switch).
 export function unlockAudio() {
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return;
@@ -33,42 +72,18 @@ export function unlockAudio() {
       return;
     }
     master = ctx.createGain();
-    master.gain.value = 0.5;
+    master.gain.value = 1;
     master.connect(ctx.destination);
-    noise = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * 0.06), ctx.sampleRate);
-    const data = noise.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    noise = makeNoise(ctx);
   }
-  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  if (ctx.state !== "running") ctx.resume().catch(() => {});
 }
 
 export function playKey(kind = "letter") {
-  if (!enabled || !ctx || ctx.state !== "running") return;
-  const k = KINDS[kind] ?? KINDS.letter;
-  const t = ctx.currentTime;
-
-  // a short burst of filtered noise (the "tick") ...
-  const src = ctx.createBufferSource();
-  src.buffer = noise;
-  const band = ctx.createBiquadFilter();
-  band.type = "bandpass";
-  band.frequency.value = k.band;
-  band.Q.value = k.q;
-  const ng = ctx.createGain();
-  ng.gain.setValueAtTime(k.noise, t);
-  ng.gain.exponentialRampToValueAtTime(0.0001, t + k.dur);
-  src.connect(band).connect(ng).connect(master);
-  src.start(t);
-  src.stop(t + k.dur + 0.01);
-
-  // ... plus a tiny falling tone, which gives it a little body
-  const osc = ctx.createOscillator();
-  osc.frequency.setValueAtTime(k.tone, t);
-  osc.frequency.exponentialRampToValueAtTime(k.tone * 0.6, t + k.dur);
-  const og = ctx.createGain();
-  og.gain.setValueAtTime(k.tonal, t);
-  og.gain.exponentialRampToValueAtTime(0.0001, t + k.dur);
-  osc.connect(og).connect(master);
-  osc.start(t);
-  osc.stop(t + k.dur + 0.01);
+  if (!enabled || !ctx) return;
+  if (ctx.state !== "running") {
+    ctx.resume().catch(() => {});
+    return;
+  }
+  scheduleClick(ctx, master, noise, kind, ctx.currentTime);
 }
