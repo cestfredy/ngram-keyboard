@@ -24,13 +24,13 @@ One entry per decision, with the number that justified it.
 
 | Model | Vocab | Smoothing | Perplexity (valid) | Top-1 | Top-3 | Keystroke savings | Size | Latency |
 |-------|-------|-----------|--------------------|-------|-------|-------------------|------|---------|
-| Unigram baseline (always `de je est`) | 20,000 | none | n/a | 3.11 % | 7.55 % | n/a | ~0 | ~0 |
+| Unigram baseline (always `de je est`) | 20,000 | none | 487.8 | 3.11 % | 7.55 % | n/a | ~0 | ~0 |
 | Interpolated Kneser-Ney, n=2 (d=0.75) | 20,000 | KN | 81.0 | 14.85 % | 28.45 % | n/a | | 3.4 ms |
 | Interpolated Kneser-Ney, n=3 (d=0.75) | 20,000 | KN | 48.1 | 22.24 % | 37.78 % | n/a | | 5.1 ms |
 | Interpolated Kneser-Ney, n=4 (d=0.75) | 20,000 | KN | 42.2 | 25.71 % | 40.88 % | n/a | | 7.0 ms |
 | Interpolated Kneser-Ney, n=5 (d=0.75) | 20,000 | KN | 42.5 | 26.46 % | 41.48 % | n/a | | 8.9 ms |
 
-Next-word prediction with no letter typed, on the validation split (276,255 positions, `</s>` not evaluated, an out-of-vocabulary target counts as a miss). The baseline suggests the same three words everywhere, so its overall top-1 and top-3 are identical for 10k, 20k and 50k (`results/baseline_unigram.csv`); only the accuracy restricted to known words moves (top-3: 7.98 % at 10k, 7.77 % at 20k, 7.63 % at 50k). Any n-gram model has to beat **7.55 % top-3** to justify itself.
+Next-word prediction with no letter typed, on the validation split (276,255 positions, `</s>` not evaluated, an out-of-vocabulary target counts as a miss). The baseline suggests the same three words everywhere, so its overall top-1 and top-3 are identical for 10k, 20k and 50k (`results/baseline_unigram.csv`); only the accuracy restricted to known words moves (top-3: 7.98 % at 10k, 7.77 % at 20k, 7.63 % at 50k). Any n-gram model has to beat **7.55 % top-3** to justify itself. The perplexity of the baseline (487.8, full validation split, vocabulary 20,000) is that of the unigram model behind it, which gives a probability to every word (the fixed list `de je est` alone does not); it was added on 2026-11-10 and shows how much the context brings: 488 without it, 42 with 3 words of context.
 
 ## Data observations
 
@@ -178,4 +178,5 @@ The test split (35,814 sentences, 275,535 word positions) was read once, by `src
 
 - Accuracy and keystroke savings on test are 0.2 to 0.4 point above validation (top-3 on validation: 40.80 / 38.79 / 36.80; keystroke savings: 56.18 / 55.12) and perplexity is 1 to 2 % lower (41.5 / 62.1 / 83.4 against 42.2 / 63.0 / 85.0). That is the size of the sampling noise measured on validation (about 0.3 point), and the direction is the same for every model, so there is no sign of overfitting to the validation split.
 - The ranking of the models and the cost of pruning are unchanged: the light model loses 4.1 points of top-3 against the unpruned model but only 1.05 point of keystroke savings against the standard one.
+- The perplexity of the unigram baseline was not measured on the test split (487.8 on validation): the test split is kept to a single evaluation of the final models.
 - The test split is now spent: no further tuning may use it. Any new variant (another corpus, another smoothing) needs a new held-out set.

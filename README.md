@@ -34,7 +34,7 @@ The test split (35,814 sentences, 275,535 word positions) was evaluated **once**
 | 4-gram, standard (shipped, 11.3 MB) | 62.1 | 24.28 % | 39.05 % | 56.41 % |
 | 4-gram, light (shipped, 5.2 MB) | 83.4 | 22.77 % | 36.99 % | 55.36 % |
 
-Accuracy and keystroke savings on test are 0.2 to 0.4 point above validation and perplexity is 1 to 2 % lower, about the size of the sampling noise, so the validation choices did not overfit. Top-1 and top-3 use every test position (no sampling).
+Accuracy and keystroke savings on test are 0.2 to 0.4 point above validation and perplexity is 1 to 2 % lower, about the size of the sampling noise, so the validation choices did not overfit. Top-1 and top-3 use every test position (no sampling). The perplexity of the unigram baseline was not measured on the test split (487.8 on validation), to keep the test split to one evaluation of the final models.
 
 ### Development results: validation split
 
@@ -42,7 +42,7 @@ All numbers below are measured on the **validation split** (35,813 sentences, 27
 
 | Model | Perplexity | Top-1 | Top-3 | Keystroke savings |
 |-------|-----------:|------:|------:|------------------:|
-| Unigram baseline (most frequent words, ignores context) | n/a | 3.11 % | 7.55 % | 38.32 % |
+| Unigram baseline (most frequent words, ignores context) | 487.8 | 3.11 % | 7.55 % | 38.32 % |
 | Bigram (n=2) | 81.0 | 14.85 % | 28.45 % | |
 | Trigram (n=3) | 48.1 | 22.24 % | 37.78 % | |
 | 4-gram, no pruning (n=4) | 42.2 | 25.52 % | 40.80 % | |
