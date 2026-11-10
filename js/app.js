@@ -1,6 +1,7 @@
 import { NgramModel } from "./model.js";
 import { contextFromText } from "./context.js";
 import { loadModelBytes } from "./store.js";
+import { playKey, setSoundEnabled, soundKind, unlockAudio } from "./sound.js";
 
 // Figures measured on the validation split (see ngram/JOURNAL.md); shown in the settings panel.
 const MODELS = {
@@ -217,12 +218,14 @@ function wireKeys() {
     const key = b.dataset.key;
     down = { b, key, accents: false, timer: null, repeat: null };
     b.classList.add("down");
+    unlockAudio();
+    playKey(soundKind(key));
     if (key.length === 1) showPop(b); // character keys only (shift, space, return... have longer names)
     if (state.layer === "letters" && VARIANTS[key]) {
       down.timer = setTimeout(() => openAccents(b, key), LONG_PRESS_MS);
     } else if (key === "back") {
       press("back");
-      down.timer = setTimeout(() => { down.repeat = setInterval(() => press("back"), 70); }, 450);
+      down.timer = setTimeout(() => { down.repeat = setInterval(() => { playKey("delete"); press("back"); }, 70); }, 450);
     } else {
       press(key);
     }
@@ -244,6 +247,7 @@ function wireKeys() {
     }
   };
   document.addEventListener("pointerup", end);
+  document.addEventListener("pointerup", unlockAudio);
   document.addEventListener("pointercancel", end);
   document.addEventListener("pointermove", (e) => {
     if (!down?.accents) return;
@@ -374,6 +378,7 @@ function renderSheet() {
 
   for (const b of document.querySelectorAll("[data-model]")) b.classList.toggle("on", b.dataset.model === state.modelName);
   for (const b of document.querySelectorAll("[data-theme-pref]")) b.classList.toggle("on", b.dataset.themePref === state.themePref);
+  for (const b of document.querySelectorAll("[data-sound]")) b.classList.toggle("on", b.dataset.sound === state.sound);
 
   placeThumbs(sheetIsOpen());
 
@@ -521,10 +526,11 @@ function wireDesktopKeyboard() {
     if (e.ctrlKey || e.metaKey || e.altKey || !state.model || sheetIsOpen()) return;
     if (e.target.closest?.("button")) { if (e.key === " " || e.key === "Enter") return; }
     let handled = true;
-    if (e.key === "Backspace") press("back");
-    else if (e.key === "Enter") press("enter");
-    else if (e.key === " ") press("space");
-    else if ([...e.key].length === 1) typeLetter(e.key === "’" ? "'" : e.key);
+    unlockAudio();
+    if (e.key === "Backspace") { playKey("delete"); press("back"); }
+    else if (e.key === "Enter") { playKey("modifier"); press("enter"); }
+    else if (e.key === " ") { playKey("modifier"); press("space"); }
+    else if ([...e.key].length === 1) { playKey("letter"); typeLetter(e.key === "’" ? "'" : e.key); }
     else handled = false;
     if (handled) e.preventDefault();
   });
@@ -552,6 +558,8 @@ function savedPref(key, valid, fallback) {
 async function init() {
   state.themePref = savedPref("ngram-theme", (v) => ["auto", "light", "dark"].includes(v), "auto");
   state.modelName = savedPref("ngram-model", (v) => v in MODELS, "light");
+  state.sound = savedPref("ngram-sound", (v) => ["on", "off"].includes(v), "on");
+  setSoundEnabled(state.sound === "on");
   applyTheme();
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
 
@@ -574,6 +582,16 @@ async function init() {
   $("#seg-theme").addEventListener("click", (e) => {
     const b = e.target.closest("[data-theme-pref]");
     if (b) setThemePref(b.dataset.themePref);
+  });
+  $("#seg-sound").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-sound]");
+    if (!b) return;
+    state.sound = b.dataset.sound;
+    try { localStorage.setItem("ngram-sound", state.sound); } catch { /* optional */ }
+    setSoundEnabled(state.sound === "on");
+    unlockAudio();
+    playKey("letter"); // a sample click when switching on (nothing happens when switching off)
+    renderSheet();
   });
   $("#seg-model").addEventListener("click", async (e) => {
     const b = e.target.closest("[data-model]");
