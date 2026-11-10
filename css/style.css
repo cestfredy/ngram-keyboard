@@ -19,6 +19,9 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* scrolling still works, but no scrollbar is drawn (desktop browsers would show one inside the phone) */
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
 html, body { margin: 0; height: 100%; background: var(--page); color: var(--text);
   font: 17px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif; }
 body { display: flex; justify-content: center; background: #1e1e1e; }
