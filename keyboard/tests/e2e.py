@@ -165,6 +165,9 @@ def main() -> None:
         check("4-grammes" in facts and "Kneser-Ney" in facts and "Top-3" in facts, "settings show the model facts")
         if shots:
             page.screenshot(path=str(shots / "05-settings-dark.png"))
+        credit = page.locator(".credit a")
+        check(credit.inner_text() == "@cestfredy" and credit.get_attribute("href") == "https://github.com/cestfredy"
+              and "with love by" in page.inner_text(".credit"), "settings credit links to the GitHub profile")
         page.locator('[data-theme-pref="light"]').click()
         check(page.locator("html").get_attribute("data-theme") == "light", "theme segment works")
         page.locator('[data-theme-pref="auto"]').click()
