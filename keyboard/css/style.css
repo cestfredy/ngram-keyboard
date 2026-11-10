@@ -77,7 +77,8 @@ body { display: flex; justify-content: center; background: #1e1e1e; }
 .key.on { background: var(--shift-on); color: #111; }
 .key svg { width: 22px; height: 22px; }
 .home { width: 134px; height: 5px; border-radius: 3px; background: var(--home); margin: 8px auto 0; }
-@media (display-mode: standalone) { .home { display: none; } }
+/* the page draws its own home bar only on desktop, where it is shown as a phone; real phones have the real one */
+@media (display-mode: standalone), (hover: none) { .home { display: none; } }
 @media (max-height: 700px) { .key { height: 40px; } .keys { gap: 8px; } }
 
 /* long-press accents */
