@@ -147,14 +147,20 @@ function setText(text) {
   refresh();
 }
 
+const TIMING_REPS = 8;
+
 function refresh() {
   if (!state.model) return;
   const m = state.model;
   state.ctx = contextFromText(state.text, (t) => m.ids.has(t));
+  // Browsers coarsen performance.now() (iOS Safari: 1 ms), so one call would read 0 ms.
+  // We time a short batch of identical calls and divide; the result is the last call's.
   const t0 = performance.now();
+  let words;
+  for (let i = 0; i < TIMING_REPS; i++) words = m.suggest(state.ctx.history, 4, state.ctx.prefix);
+  state.times.push((performance.now() - t0) / TIMING_REPS);
   // ask for one more word: a bare number token is useless as a suggestion
-  state.suggestions = m.suggest(state.ctx.history, 4, state.ctx.prefix).filter((w) => w !== "<num>").slice(0, 3);
-  state.times.push(performance.now() - t0);
+  state.suggestions = words.filter((w) => w !== "<num>").slice(0, 3);
   if (state.times.length > 300) state.times.shift();
 }
 
@@ -330,6 +336,12 @@ function placeThumbs(animate) {
   }
 }
 
+// Milliseconds in, readable text out: microseconds below 0.1 ms, so a fast model never shows "0,00 ms".
+function fmtDuration(ms) {
+  if (ms < 0.1) return `${Math.max(1, Math.round(ms * 1000))} µs`;
+  return `${ms.toFixed(ms < 10 ? 2 : 1).replace(".", ",")} ms`;
+}
+
 function renderSheet() {
   const chars = state.committedChars + [...state.text].length;
   $("#s-presses").textContent = state.presses;
@@ -337,7 +349,7 @@ function renderSheet() {
   $("#s-saved").textContent = chars ? `${Math.round(100 * (1 - state.presses / chars))} %` : "–";
   $("#s-taps").textContent = state.taps;
   const med = median(state.times);
-  $("#s-ms").textContent = med == null ? "–" : `${med.toFixed(2).replace(".", ",")} ms`;
+  $("#s-ms").textContent = med == null ? "–" : fmtDuration(med);
 
   for (const b of document.querySelectorAll("[data-model]")) b.classList.toggle("on", b.dataset.model === state.modelName);
   for (const b of document.querySelectorAll("[data-theme-pref]")) b.classList.toggle("on", b.dataset.themePref === state.themePref);
