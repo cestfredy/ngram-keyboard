@@ -370,9 +370,30 @@ function setThemePref(pref) {
   renderSheet();
 }
 
+// The sheet slides in and out (CSS transitions on .open); `hidden` is only set once the exit is over.
+let sheetTimer = 0;
+const sheetIsOpen = () => $("#sheet").classList.contains("open");
+
+function openSheet() {
+  const sheet = $("#sheet");
+  clearTimeout(sheetTimer);
+  renderSheet();
+  sheet.hidden = false;
+  void sheet.offsetWidth; // commit the closed state so the transition has a starting point
+  sheet.classList.add("open");
+}
+
+function closeSheet() {
+  const sheet = $("#sheet");
+  if (!sheetIsOpen()) return;
+  sheet.classList.remove("open");
+  clearTimeout(sheetTimer);
+  sheetTimer = setTimeout(() => { sheet.hidden = true; }, 260);
+}
+
 function wireDesktopKeyboard() {
   document.addEventListener("keydown", (e) => {
-    if (e.ctrlKey || e.metaKey || e.altKey || !state.model || !$("#sheet").hidden) return;
+    if (e.ctrlKey || e.metaKey || e.altKey || !state.model || sheetIsOpen()) return;
     if (e.target.closest?.("button")) { if (e.key === " " || e.key === "Enter") return; }
     let handled = true;
     if (e.key === "Backspace") press("back");
@@ -417,8 +438,8 @@ async function init() {
     const dark = document.documentElement.dataset.theme === "dark";
     setThemePref(dark ? "light" : "dark");
   });
-  $("#btn-settings").addEventListener("click", () => { $("#sheet").hidden = false; renderSheet(); });
-  $("#sheet").addEventListener("click", (e) => { if (e.target.closest("[data-close]")) $("#sheet").hidden = true; });
+  $("#btn-settings").addEventListener("click", openSheet);
+  $("#sheet").addEventListener("click", (e) => { if (e.target.closest("[data-close]")) closeSheet(); });
   $("#seg-theme").addEventListener("click", (e) => {
     const b = e.target.closest("[data-theme-pref]");
     if (b) setThemePref(b.dataset.themePref);
@@ -429,7 +450,8 @@ async function init() {
     try { localStorage.setItem("ngram-model", b.dataset.model); } catch { /* optional */ }
     try { await loadModel(b.dataset.model); } catch { /* message already shown */ }
   });
-  $("#reset").addEventListener("click", () => { reset(); $("#sheet").hidden = true; });
+  $("#reset").addEventListener("click", () => { reset(); closeSheet(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && sheetIsOpen()) closeSheet(); });
 
   window.__ngramDemo = { state, press, applySuggestion, typeLetter }; // handy for automated tests
   registerServiceWorker();
