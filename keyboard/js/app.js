@@ -316,6 +316,8 @@ function render() {
   const field = $("#field");
   $("#text").textContent = state.text;
   field.classList.toggle("filled", state.text.length > 0);
+  $(".compose-box").classList.toggle("filled", state.text.length > 0);
+  $("#btn-send").disabled = state.text.trim().length === 0;
   field.scrollTop = field.scrollHeight;
 
   const box = $("#messages");
@@ -557,6 +559,9 @@ async function init() {
   wireKeys();
   wireDesktopKeyboard();
   wireInstall();
+  // send button: acts on touch-down like the return key; click is only for keyboard activation (detail 0)
+  $("#btn-send").addEventListener("pointerdown", (e) => { e.preventDefault(); press("enter"); });
+  $("#btn-send").addEventListener("click", (e) => { if (e.detail === 0) press("enter"); });
   wireSheetDrag();
 
   $("#btn-theme").addEventListener("click", () => {

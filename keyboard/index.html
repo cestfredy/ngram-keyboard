@@ -37,7 +37,12 @@
     <main id="messages" class="messages" aria-live="polite" aria-label="Messages envoyés"></main>
 
     <div class="composer">
-      <div id="field" class="field" aria-label="Texte saisi"><span id="text" class="text"></span><i class="caret"></i><span id="placeholder" class="placeholder">Écris quelque chose…</span></div>
+      <div class="compose-box">
+        <div id="field" class="field" aria-label="Texte saisi"><span id="text" class="text"></span><i class="caret"></i><span id="placeholder" class="placeholder">Écris quelque chose…</span></div>
+        <button type="button" id="btn-send" class="send" aria-label="Envoyer" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg>
+        </button>
+      </div>
     </div>
 
     <section class="kbd" aria-label="Clavier">

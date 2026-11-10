@@ -212,6 +212,17 @@ def main() -> None:
         open_sheet(page)
         close_sheet(page)
 
+        # send button: disabled while empty, sends the message like the return key
+        page.evaluate("window.__ngramDemo.press('enter')")  # flush whatever is left in the field
+        check(page.locator("#btn-send").is_disabled(), "send button disabled while the field is empty")
+        n0 = page.evaluate("window.__ngramDemo.state.sent.length")
+        page.evaluate("() => { const d = window.__ngramDemo; for (const ch of 'salut') d.typeLetter(ch); }")
+        check(page.locator("#btn-send").is_enabled(), "send button enabled once there is text")
+        page.locator("#btn-send").click()
+        check(page.evaluate("window.__ngramDemo.state.sent.length") == n0 + 1 and field_text(page) == "",
+              "send button sends the message and clears the field")
+        check(page.locator("#btn-send").is_disabled(), "send button disabled again when the field is empty")
+
         # per-keystroke speed
         ms = page.evaluate("""() => {
             const d = window.__ngramDemo; const t = [];
