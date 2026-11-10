@@ -2,7 +2,7 @@
 
 Un clavier prédictif français qui marche **sans connexion** : un modèle n-gramme (Kneser-Ney) suggère les 3 mots suivants, mesuré proprement, avec une démo en HTML, CSS et JavaScript purs.
 
-**[Essayer la démo](https://cestfredy.github.io/ngram-keyboard/)** (sur téléphone : « Sur l'écran d'accueil » pour l'installer)
+**[Essayer la démo](https://cestfredy.github.io/ngram-keyboard/)** (sur téléphone : Partager --> Sur l'écran d'accueil pour l'installer)
 
 *English summary: a French next-word predictor (4-gram, interpolated Kneser-Ney, 5 to 11 MB) that runs 100 % offline in the browser. On the held-out test split, the right word is in the 3 suggestions 39.05 % of the time with no letter typed, and a typing simulation saves 56.41 % of keystrokes. Details below, in French.*
 
@@ -19,7 +19,7 @@ Un clavier prédictif français qui marche **sans connexion** : un modèle n-gra
 
 - **Modèle :** 4-grammes, lissage Kneser-Ney interpolé (d = 0,75), vocabulaire de 20 000 mots, élagage des n-grammes rares.
 - **Taille :** 5,2 Mo (léger) ou 11,3 Mo (standard), dans un format binaire compact lu directement par JavaScript.
-- **Vitesse :** environ 0,5 ms par frappe (suggestions et affichage) dans Chromium.
+- **Vitesse :** environ 0,5 ms par frappe (suggestions et affichage) dans Chrome.
 - **Installable :** ajoutée à l'écran d'accueil, elle s'ouvre comme une vraie application, avec son icône <img src="docs/img/icone.png" alt="Icône n-gram" width="26" valign="middle">.
 
 ## Résultats
@@ -58,8 +58,8 @@ Les choix, la validation et chaque chiffre avec sa justification sont dans [`ngr
 ## Lancer le projet
 
 ```bash
-# Données : télécharger fra_sentences.tsv.bz2 sur https://tatoeba.org/en/downloads
-# et le placer dans ngram/data/raw/
+# Données : télécharger fra_sentences.tsv.bz2 sur https://tatoeba.org/en/downloads et le placer dans ngram/data/raw/
+
 cd ngram
 pip install -r requirements.txt
 python src/prepare_data.py        # nettoyage, déduplication, découpage
@@ -78,4 +78,3 @@ Le détail de la démo est dans [`keyboard/README.md`](keyboard/README.md). Le d
 
 - **Code :** MIT (voir `LICENSE`).
 - **Tatoeba :** phrases françaises de [Tatoeba](https://tatoeba.org), sous licence CC-BY 2.0 FR ; l'attribution est obligatoire. Les deux modèles de `keyboard/models/` contiennent des statistiques de n-grammes dérivées de ces phrases, sous la même obligation d'attribution.
-- **Les corpus bruts et traités ne sont pas redistribués** (exclus du dépôt par `.gitignore`).
