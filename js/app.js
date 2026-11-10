@@ -389,6 +389,50 @@ function applyTheme() {
   document.querySelector('meta[name="theme-color"]').content = dark ? "#4a4a4a" : "#ffffff";
 }
 
+// ---------------------------------------------------------------- install (PWA)
+// Chromium (Android, desktop) fires `beforeinstallprompt`; iOS has no install prompt, so we explain the Share menu.
+const SHARE_ICON = '<svg class="share-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
+const install = { prompt: null, done: false, showSteps: false };
+
+const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isFirefoxIos = () => /fxios/i.test(navigator.userAgent);
+
+function renderInstall() {
+  const box = $("#install"), btn = $("#btn-install"), note = $("#install-note");
+  const ios = isIos() && !isFirefoxIos();
+  const available = !isStandalone() && (install.done || install.prompt || ios);
+  box.hidden = !available;
+  if (!available) return;
+  btn.hidden = install.done;
+  if (install.done) {
+    note.textContent = "✓ Installée. Ouvre-la depuis l'icône de ton écran d'accueil. Au premier lancement, garde la connexion : le modèle est copié une fois dans l'application.";
+  } else if (install.prompt) {
+    note.textContent = "S'ouvre dans sa propre fenêtre, avec son icône, et marche sans connexion.";
+  } else if (install.showSteps) {
+    note.innerHTML = `1. Touche <b>Partager</b> ${SHARE_ICON} (barre d'adresse ou bas de l'écran).<br>2. Choisis <b>Sur l'écran d'accueil</b>, puis <b>Ajouter</b>.<br>Au premier lancement, garde la connexion : l'application garde sa propre copie du modèle.`;
+  } else {
+    note.textContent = "S'ouvre dans sa propre fenêtre, avec son icône, et marche sans connexion.";
+  }
+}
+
+function wireInstall() {
+  addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); install.prompt = e; renderInstall(); });
+  addEventListener("appinstalled", () => { install.prompt = null; install.done = true; renderInstall(); });
+  $("#btn-install").addEventListener("click", async () => {
+    if (install.prompt) {
+      const ev = install.prompt;
+      install.prompt = null; // a prompt event can be used once
+      ev.prompt();
+      try { await ev.userChoice; } catch { /* dismissed */ }
+    } else {
+      install.showSteps = !install.showSteps;
+    }
+    renderInstall();
+  });
+  renderInstall();
+}
+
 function setThemePref(pref) {
   state.themePref = pref;
   try { localStorage.setItem("ngram-theme", pref); } catch { /* optional */ }
@@ -460,6 +504,7 @@ async function init() {
   buildKeys();
   wireKeys();
   wireDesktopKeyboard();
+  wireInstall();
 
   $("#btn-theme").addEventListener("click", () => {
     const dark = document.documentElement.dataset.theme === "dark";
