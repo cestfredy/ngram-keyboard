@@ -1,6 +1,6 @@
 // Service worker: keeps the app shell (HTML, CSS, JS) so the page opens with no network.
 // Models are not handled here: the page stores them with the Cache API (see js/store.js).
-const SHELL = "ngram-shell-v2";
+const SHELL = "ngram-shell-v3";
 const FILES = [
   "./", "index.html", "css/style.css", "js/app.js", "js/model.js", "js/context.js", "js/store.js",
   "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png",
