@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Clavier prédictif n-gramme</title>
+  <meta name="description" content="Prédiction du mot suivant en français avec un modèle n-gramme Kneser-Ney, 100 % hors-ligne dans le navigateur.">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+  <script>
+    // apply the saved theme before the first paint (no flash)
+    try {
+      const pref = localStorage.getItem("ngram-theme") || "auto";
+      const dark = pref === "dark" || (pref === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+    } catch { /* storage blocked: light theme */ }
+  </script>
+</head>
+<body>
+  <div class="phone" id="phone">
+    <header class="top">
+      <button type="button" id="btn-settings" class="icon" aria-label="Réglages">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      <button type="button" id="btn-theme" class="icon" aria-label="Basculer clair / sombre">
+        <svg class="i-moon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+      </button>
+    </header>
+
+    <main id="messages" class="messages" aria-live="polite" aria-label="Messages envoyés"></main>
+
+    <div class="composer">
+      <div id="field" class="field" aria-label="Texte saisi"><span id="text" class="text"></span><i class="caret"></i><span id="placeholder" class="placeholder">Écris quelque chose…</span></div>
+    </div>
+
+    <section class="kbd" aria-label="Clavier">
+      <div id="suggestions" class="sugs">
+        <button type="button" class="sug" data-i="0"></button>
+        <button type="button" class="sug" data-i="1"></button>
+        <button type="button" class="sug" data-i="2"></button>
+      </div>
+      <div id="keys" class="keys"></div>
+      <div class="home" aria-hidden="true"></div>
+      <div id="accents" class="accents" hidden></div>
+    </section>
+
+    <div id="sheet" class="sheet" hidden>
+      <div class="backdrop" data-close></div>
+      <div class="panel" role="dialog" aria-modal="true" aria-label="Réglages">
+        <div class="panel-head">
+          <h2>Réglages</h2>
+          <button type="button" class="icon small" data-close aria-label="Fermer">✕</button>
+        </div>
+
+        <h3>Apparence</h3>
+        <div class="seg" id="seg-theme" role="group" aria-label="Thème">
+          <button type="button" data-theme-pref="auto">Auto</button>
+          <button type="button" data-theme-pref="light">Clair</button>
+          <button type="button" data-theme-pref="dark">Sombre</button>
+        </div>
+
+        <h3>Modèle</h3>
+        <div class="seg" id="seg-model" role="group" aria-label="Modèle">
+          <button type="button" data-model="light">Léger · 5 Mo</button>
+          <button type="button" data-model="standard">Standard · 11 Mo</button>
+        </div>
+        <dl class="facts" id="facts"></dl>
+
+        <h3>Cette session</h3>
+        <div class="stats">
+          <div><b id="s-presses">0</b><span>touches</span></div>
+          <div><b id="s-chars">0</b><span>caractères</span></div>
+          <div class="hl"><b id="s-saved">–</b><span>économie</span></div>
+          <div><b id="s-taps">0</b><span>mots cliqués</span></div>
+          <div><b id="s-ms">–</b><span>par prédiction</span></div>
+        </div>
+        <p class="note">Économie = 1 − touches pressées / caractères écrits (chaque touche, retour arrière compris, compte pour 1 ; un clic sur une suggestion compte pour 1 touche).</p>
+        <button type="button" id="reset" class="wide">Effacer la conversation et les compteurs</button>
+      </div>
+    </div>
+
+    <div id="loading" class="loading" hidden>
+      <p id="loading-text">Chargement du modèle…</p>
+      <div class="bar"><i id="bar"></i></div>
+      <p class="hint">Une seule fois : ensuite tout fonctionne sans connexion.</p>
+    </div>
+  </div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
