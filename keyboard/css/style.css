@@ -132,6 +132,11 @@ h3 { margin: 18px 0 8px; font-size: .78rem; text-transform: uppercase; letter-sp
 .wide { width: 100%; margin-top: 16px; appearance: none; border: 1px solid var(--line); background: transparent; color: var(--accent);
   font: inherit; padding: 10px; border-radius: 10px; cursor: pointer; }
 
+.wide.primary { margin-top: 0; background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.wide.primary[hidden] { display: none; }
+.note b { color: var(--text); font-weight: 600; }
+.share-i { width: 1.1em; height: 1.1em; vertical-align: -.2em; }
+
 /* loading */
 .loading { position: absolute; inset: 0; z-index: 9; background: var(--page); display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 12px; padding: 24px; text-align: center; }

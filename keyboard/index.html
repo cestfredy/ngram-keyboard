@@ -8,7 +8,10 @@
   <meta name="theme-color" content="#ffffff">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="n-gram">
   <link rel="stylesheet" href="css/style.css">
   <script>
     // apply the saved theme before the first paint (no flash)
@@ -62,6 +65,12 @@
           <button type="button" data-theme-pref="auto">Auto</button>
           <button type="button" data-theme-pref="light">Clair</button>
           <button type="button" data-theme-pref="dark">Sombre</button>
+        </div>
+
+        <div id="install" hidden>
+          <h3>Application</h3>
+          <button type="button" id="btn-install" class="wide primary">Installer l'application</button>
+          <p class="note" id="install-note"></p>
         </div>
 
         <h3>Modèle</h3>
