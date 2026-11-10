@@ -11,7 +11,7 @@ Un clavier prédictif français qui marche **sans connexion** : un modèle n-gra
   <img src="docs/img/demo-sombre.png" alt="Le clavier en mode sombre sur un iPhone" width="230">
   <img src="docs/img/reglages.png" alt="Le panneau de réglages : apparence, son des touches, installation, modèle" width="230">
 </p>
-<p align="center"><em>Captures prises sur un iPhone : mode clair, mode sombre et réglages.</em></p>
+<p align="center"><em>mode clair, mode sombre et réglages.</em></p>
 
 ## Ce que ça fait
 
