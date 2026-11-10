@@ -318,6 +318,18 @@ function median(a) {
   return s[Math.floor(s.length / 2)];
 }
 
+// Moves each segmented control's blue pill under its active button (no animation on the first placement).
+function placeThumbs(animate) {
+  for (const seg of document.querySelectorAll(".seg")) {
+    const on = seg.querySelector("button.on"), thumb = seg.querySelector(".thumb");
+    if (!on || !thumb || !on.offsetWidth) continue; // sheet hidden: measured when it opens
+    if (!animate) thumb.classList.add("snap");
+    thumb.style.setProperty("--x", `${on.offsetLeft}px`);
+    thumb.style.setProperty("--w", `${on.offsetWidth}px`);
+    if (!animate) { void thumb.offsetWidth; thumb.classList.remove("snap"); }
+  }
+}
+
 function renderSheet() {
   const chars = state.committedChars + [...state.text].length;
   $("#s-presses").textContent = state.presses;
@@ -329,6 +341,8 @@ function renderSheet() {
 
   for (const b of document.querySelectorAll("[data-model]")) b.classList.toggle("on", b.dataset.model === state.modelName);
   for (const b of document.querySelectorAll("[data-theme-pref]")) b.classList.toggle("on", b.dataset.themePref === state.themePref);
+
+  placeThumbs(sheetIsOpen());
 
   const m = state.model;
   const facts = $("#facts");
@@ -379,6 +393,7 @@ function openSheet() {
   clearTimeout(sheetTimer);
   renderSheet();
   sheet.hidden = false;
+  placeThumbs(false);
   void sheet.offsetWidth; // commit the closed state so the transition has a starting point
   sheet.classList.add("open");
 }
@@ -439,6 +454,7 @@ async function init() {
     setThemePref(dark ? "light" : "dark");
   });
   $("#btn-settings").addEventListener("click", openSheet);
+  addEventListener("resize", () => { if (sheetIsOpen()) placeThumbs(false); });
   $("#sheet").addEventListener("click", (e) => { if (e.target.closest("[data-close]")) closeSheet(); });
   $("#seg-theme").addEventListener("click", (e) => {
     const b = e.target.closest("[data-theme-pref]");
