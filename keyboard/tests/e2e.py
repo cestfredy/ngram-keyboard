@@ -77,6 +77,9 @@ def main() -> None:
         ctx = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2,
                                   has_touch=True, is_mobile=True, color_scheme="light")
         page = ctx.new_page()
+        # count the sounds the page starts (the audio itself cannot be heard in a headless test)
+        page.add_init_script("window.__clicks = 0; const Orig = window.AudioContext;"
+                             "window.AudioContext = class extends Orig { createBufferSource() { window.__clicks++; return super.createBufferSource(); } };")
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
 
@@ -189,6 +192,24 @@ def main() -> None:
         page.mouse.down()
         check(not page.is_visible("#pop"), "no bubble on the space key")
         page.mouse.up()
+
+        # key sounds: on by default, one click per key press, silent once switched off in the settings
+        for _ in range(3):  # the first touch unlocks the audio context, the next ones play
+            box = key(page, "e").bounding_box()
+            page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        n_on = page.evaluate("window.__clicks")
+        check(n_on >= 1, f"key presses play a click ({n_on} sounds)")
+        open_sheet(page)
+        page.locator('[data-sound="off"]').click()
+        page.wait_for_timeout(100)
+        n_before = page.evaluate("window.__clicks")
+        close_sheet(page)
+        box = key(page, "e").bounding_box()
+        page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        check(page.evaluate("window.__clicks") == n_before, "no sound once switched off")
+        open_sheet(page)
+        page.locator('[data-sound="on"]').click()
+        close_sheet(page)
 
         # pull the settings sheet down by its handle: a short pull springs back, a long one closes it
         open_sheet(page)
