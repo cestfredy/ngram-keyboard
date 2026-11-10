@@ -25,3 +25,6 @@ venv/
 Thumbs.db
 .idea/
 .vscode/
+
+# Local run lock of the final test evaluation (the results file is the record)
+*.lock
