@@ -373,12 +373,14 @@ function renderSheet() {
     ["Touches économisées", MODELS[state.modelName].savings],
   ];
   for (const [k, v, cls] of rows) {
+    const row = document.createElement("div"); // one flex row per fact: the value gets all the room the label leaves
     const dt = document.createElement("dt");
     dt.textContent = k;
     const dd = document.createElement("dd");
     dd.textContent = v;
     if (cls) dd.className = cls;
-    facts.append(dt, dd);
+    row.append(dt, dd);
+    facts.append(row);
   }
 }
 
@@ -410,7 +412,7 @@ function renderInstall() {
   } else if (install.prompt) {
     note.textContent = "S'ouvre dans sa propre fenêtre, avec son icône, et marche sans connexion.";
   } else if (install.showSteps) {
-    note.innerHTML = `1. Touche <b>Partager</b> ${SHARE_ICON} (barre d'adresse ou bas de l'écran).<br>2. Choisis <b>Sur l'écran d'accueil</b>, puis <b>Ajouter</b>.<br>Au premier lancement, garde la connexion : l'application garde sa propre copie du modèle.`;
+    note.innerHTML = `1. Touche <b>Partager</b> ${SHARE_ICON}.<br>2. Choisis <b>Sur l'écran d'accueil</b>, puis <b>Ajouter</b>.<br>Au premier lancement, garde la connexion : l'application garde sa propre copie du modèle.`;
   } else {
     note.textContent = "S'ouvre dans sa propre fenêtre, avec son icône, et marche sans connexion.";
   }
